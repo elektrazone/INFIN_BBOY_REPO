@@ -48,12 +48,310 @@ const BabylonCanvas: React.FC = () => {
     const buildingSegments: BABYLON.TransformNode[] = [];
     const groundSegments: BABYLON.TransformNode[] = [];
     let scrollObserver: BABYLON.Nullable<BABYLON.Observer<BABYLON.Scene>> = null;
-    const scrollSpeed = 102; // units per second
-    const scrollingEnabledRef = { current: true };
+    const baseScrollSpeed = 102; // units per second
+    let activeScrollSpeed = 0;
+
+    type PlayerState =
+      | 'Idle'
+      | 'Run'
+      | 'Strafe_L'
+      | 'Strafe_R'
+      | 'Slide'
+      | 'Jump'
+      | 'Fall'
+      | 'Getup'
+      | 'Run_Idle';
+
+    type AnimationRangeConfig = {
+      start: number;
+      end: number;
+      loop: boolean;
+      scroll: number;
+    };
+
+    type LoopingState = Extract<PlayerState, 'Idle' | 'Run' | 'Strafe_L' | 'Strafe_R'>;
+    const loopFrameRanges: Record<LoopingState, [number, number]> = {
+      Idle: [0, 175],
+      Run: [176, 217],
+      Strafe_L: [364, 403],
+      Strafe_R: [404, 443],
+    };
+    const buildLoopRange = (state: LoopingState, scroll: number): AnimationRangeConfig => {
+      const [start, end] = loopFrameRanges[state];
+      return { start, end, loop: true, scroll };
+    };
+
+    const animationRanges: Record<PlayerState, AnimationRangeConfig> = {
+      Idle: buildLoopRange('Idle', 0),
+      Run: buildLoopRange('Run', baseScrollSpeed),
+      Slide: { start: 218, end: 309, loop: false, scroll: baseScrollSpeed },
+      Jump: { start: 310, end: 363, loop: false, scroll: baseScrollSpeed },
+      Strafe_L: buildLoopRange('Strafe_L', baseScrollSpeed),
+      Strafe_R: buildLoopRange('Strafe_R', baseScrollSpeed),
+      Run_Idle: { start: 444, end: 497, loop: false, scroll: 0 },
+      Fall: { start: 498, end: 649, loop: false, scroll: baseScrollSpeed },
+      Getup: { start: 650, end: 1106, loop: false, scroll: baseScrollSpeed },
+    };
+    const resolveFrames = (state: PlayerState, fallback: AnimationRangeConfig) => {
+      if (playerSkeleton) {
+        const namedRange = playerSkeleton.getAnimationRange(state);
+        if (namedRange) {
+          return { start: namedRange.from, end: namedRange.to };
+        }
+      }
+      return { start: fallback.start, end: fallback.end };
+    };
+
+    const blockingStates = new Set<PlayerState>(['Slide', 'Jump', 'Fall', 'Getup']);
+    const keyState = {
+      forward: false,
+      left: false,
+      right: false,
+      slide: false,
+    };
+    let playerSkeleton: BABYLON.Nullable<BABYLON.Skeleton> = null;
+    let playerAnimationGroup: BABYLON.Nullable<BABYLON.AnimationGroup> = null;
+    let playerAnimatable: BABYLON.Nullable<BABYLON.Animatable> = null;
+    let animationGroupObserver: BABYLON.Nullable<BABYLON.Observer<BABYLON.AnimationGroup>> = null;
+    let currentPlayerState: PlayerState = 'Idle';
+    let blockingAction = false;
+    let playerRoot: BABYLON.Nullable<BABYLON.TransformNode> = null;
+    let playerMotionObserver: BABYLON.Nullable<BABYLON.Observer<BABYLON.Scene>> = null;
+    let idleInitialized = false;
+    const lateralRange = 40;
+    const lateralSpeed = 40;
+    const lateralReturnSpeed = 40;
+    const lateralState = { target: 0 };
+
+    const stopCurrentAnimation = () => {
+      if (playerAnimatable) {
+        playerAnimatable.stop();
+        playerAnimatable = null;
+      }
+      if (playerAnimationGroup) {
+        if (animationGroupObserver) {
+          playerAnimationGroup.onAnimationGroupEndObservable.remove(animationGroupObserver);
+          animationGroupObserver = null;
+        }
+        playerAnimationGroup.stop();
+      }
+    };
+
+    const setScrollForState = (state: PlayerState) => {
+      activeScrollSpeed = animationRanges[state]?.scroll ?? 0;
+    };
+
+    const playState = (state: PlayerState, options: { onComplete?: () => void } = {}) => {
+      const range = animationRanges[state];
+      if (!range) {
+        return;
+      }
+      const { start, end } = resolveFrames(state, range);
+      const hasAnimationSource = playerAnimationGroup || playerSkeleton;
+      if (!hasAnimationSource) {
+        return;
+      }
+      if (currentPlayerState === state && range.loop) {
+        setScrollForState(state);
+        return;
+      }
+      stopCurrentAnimation();
+      const shouldBlock = !range.loop && blockingStates.has(state);
+      const handleEnd = () => {
+        blockingAction = false;
+        options.onComplete?.();
+      };
+      let started = false;
+      if (playerAnimationGroup) {
+        playerAnimationGroup.enableBlending = true;
+        playerAnimationGroup.blendingSpeed = 0.05;
+        playerAnimationGroup.start(range.loop, 1, start, end);
+        started = true;
+        if (!range.loop) {
+          animationGroupObserver = playerAnimationGroup.onAnimationGroupEndObservable.add(() => {
+            if (animationGroupObserver) {
+              playerAnimationGroup!.onAnimationGroupEndObservable.remove(animationGroupObserver);
+              animationGroupObserver = null;
+            }
+            handleEnd();
+          });
+        }
+      } else if (playerSkeleton) {
+        playerAnimatable = scene.beginAnimation(playerSkeleton, start, end, range.loop, 1, () => handleEnd());
+        started = true;
+      }
+      if (!started) {
+        return;
+      }
+      currentPlayerState = state;
+      setScrollForState(state);
+      blockingAction = shouldBlock;
+    };
+
+    const setLateralTarget = (value: number) => {
+      lateralState.target = Math.max(-lateralRange, Math.min(lateralRange, value));
+    };
+
+    const ensureIdle = () => {
+      if (idleInitialized) {
+        return;
+      }
+      if (playerAnimationGroup || playerSkeleton) {
+        idleInitialized = true;
+        playState('Idle');
+      }
+    };
+
+    const transitionToIdle = () => {
+      if (blockingAction) {
+        return;
+      }
+      if (currentPlayerState === 'Idle') {
+        playState('Idle');
+        return;
+      }
+      if (currentPlayerState === 'Run_Idle') {
+        return;
+      }
+      playState('Run_Idle', {
+        onComplete: () => playState('Idle'),
+      });
+    };
+
+    const evaluateMovement = () => {
+      if (blockingAction) {
+        return;
+      }
+      if (keyState.left && !keyState.right) {
+        setLateralTarget(lateralRange);
+        playState('Strafe_R');
+        return;
+      }
+      if (keyState.right && !keyState.left) {
+        setLateralTarget(-lateralRange);
+        playState('Strafe_L');
+        return;
+      }
+      if (keyState.forward) {
+        setLateralTarget(playerRoot ? playerRoot.position.x : 0);
+        playState('Run');
+        return;
+      }
+      setLateralTarget(playerRoot ? playerRoot.position.x : 0);
+      transitionToIdle();
+    };
+
+    const triggerSlide = () => {
+      if (blockingAction) {
+        return;
+      }
+      setLateralTarget(playerRoot ? playerRoot.position.x : 0);
+      playState('Slide', {
+        onComplete: () => {
+          keyState.slide = false;
+          evaluateMovement();
+        },
+      });
+    };
+
+    const triggerJump = () => {
+      if (blockingAction) {
+        return;
+      }
+      setLateralTarget(playerRoot ? playerRoot.position.x : 0);
+      playState('Jump', {
+        onComplete: () =>
+          playState('Fall', {
+            onComplete: () =>
+              playState('Getup', {
+                onComplete: () => evaluateMovement(),
+              }),
+          }),
+      });
+    };
+
+    const updatePlayerLateralPosition = (deltaSeconds: number) => {
+      if (!playerRoot) {
+        return;
+      }
+      const target = lateralState.target;
+      const currentX = playerRoot.position.x;
+      const diff = target - currentX;
+      if (Math.abs(diff) < 0.01) {
+        playerRoot.position.x = target;
+        return;
+      }
+      const speed = target === 0 ? lateralReturnSpeed : lateralSpeed;
+      const step = Math.sign(diff) * Math.min(Math.abs(diff), speed * deltaSeconds);
+      playerRoot.position.x = Math.max(-lateralRange, Math.min(lateralRange, currentX + step));
+    };
+
+    playerMotionObserver = scene.onBeforeRenderObservable.add(() => {
+      const deltaSeconds = scene.getEngine().getDeltaTime() / 1000;
+      updatePlayerLateralPosition(deltaSeconds);
+      ensureIdle();
+    });
+
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.code === 'Space') {
-        event.preventDefault();
-        scrollingEnabledRef.current = !scrollingEnabledRef.current;
+      switch (event.code) {
+        case 'KeyW':
+          if (!keyState.forward) {
+            keyState.forward = true;
+            evaluateMovement();
+          }
+          break;
+        case 'KeyA':
+          if (!keyState.left) {
+            keyState.left = true;
+            evaluateMovement();
+          }
+          break;
+        case 'KeyD':
+          if (!keyState.right) {
+            keyState.right = true;
+            evaluateMovement();
+          }
+          break;
+        case 'KeyS':
+          if (!keyState.slide) {
+            keyState.slide = true;
+            triggerSlide();
+          }
+          break;
+        case 'Space':
+          event.preventDefault();
+          triggerJump();
+          break;
+        default:
+          break;
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      switch (event.code) {
+        case 'KeyW':
+          if (keyState.forward) {
+            keyState.forward = false;
+            evaluateMovement();
+          }
+          break;
+        case 'KeyA':
+          if (keyState.left) {
+            keyState.left = false;
+            evaluateMovement();
+          }
+          break;
+        case 'KeyD':
+          if (keyState.right) {
+            keyState.right = false;
+            evaluateMovement();
+          }
+          break;
+        case 'KeyS':
+          keyState.slide = false;
+          break;
+        default:
+          break;
       }
     };
     // Move camera further back and point at origin
@@ -142,6 +440,8 @@ const BabylonCanvas: React.FC = () => {
         const root = meshes[0];
         root.position = new BABYLON.Vector3(0, 0, 0);
         root.scaling = new BABYLON.Vector3(8, 8, 8); // Further increase scale
+        playerRoot = root;
+        playerSkeleton = skeletons[0] || null;
         shadowGenerator.addShadowCaster(root, true);
         // Optionally, adjust bounding box
         if (root.getBoundingInfo) {
@@ -149,8 +449,10 @@ const BabylonCanvas: React.FC = () => {
           const center = bounding.boundingBox.centerWorld;
           root.position = root.position.subtract(center);
         }
-        // Play all animations
-        animationGroups.forEach(group => group.start(true));
+        playerAnimationGroup = animationGroups[0] || null;
+        animationGroups.forEach(group => group.stop());
+        // Configure animation controller
+        ensureIdle();
       },
       undefined,
       (scene, message, exception) => {
@@ -243,11 +545,8 @@ const BabylonCanvas: React.FC = () => {
         }
 
         scrollObserver = scene.onBeforeRenderObservable.add(() => {
-          if (!scrollingEnabledRef.current) {
-            return;
-          }
           const deltaSeconds = scene.getEngine().getDeltaTime() / 1000;
-          const movement = scrollSpeed * deltaSeconds;
+          const movement = activeScrollSpeed * deltaSeconds;
           if (movement === 0) {
             return;
           }
@@ -285,15 +584,24 @@ const BabylonCanvas: React.FC = () => {
         console.error('Error loading buildings.glb:', message, exception);
       }
     );
-    engine.runRenderLoop(() => scene.render());
+    engine.runRenderLoop(() => {
+      ensureIdle();
+      scene.render();
+    });
     window.addEventListener('resize', applyCanvasSize);
     window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
     return () => {
       window.removeEventListener('resize', applyCanvasSize);
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
       if (scrollObserver) {
         scene.onBeforeRenderObservable.remove(scrollObserver);
       }
+      if (playerMotionObserver) {
+        scene.onBeforeRenderObservable.remove(playerMotionObserver);
+      }
+      stopCurrentAnimation();
       buildingSegments.forEach(segment => segment.dispose());
       groundSegments.forEach(segment => segment.dispose());
       engine.dispose();
