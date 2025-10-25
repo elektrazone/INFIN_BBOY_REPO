@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@babylonjs/loaders": "^6.49.0",
     "babylonjs": "^6.49.0",
+    "babylonjs-loaders": "^6.49.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

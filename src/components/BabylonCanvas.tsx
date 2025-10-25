@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import * as BABYLON from 'babylonjs';
-import '@babylonjs/loaders/glTF';
+import 'babylonjs-loaders';
 
 const BabylonCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
