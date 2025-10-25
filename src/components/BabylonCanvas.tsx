@@ -8,11 +8,41 @@ const BabylonCanvas: React.FC = () => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    // Set fixed canvas size to avoid stretching
-    canvas.width = 800;
-    canvas.height = 600;
-    const engine = new BABYLON.Engine(canvas, true);
-    engine.setHardwareScalingLevel(window.devicePixelRatio);
+
+    const maxHeight = 3840;
+    const maxWidth = 2160;
+    let engine: BABYLON.Engine | null = null;
+
+    const updateHardwareScaling = () => {
+      if (!engine) return;
+      // Increase hardware scaling on larger canvases to lower internal render resolution and boost FPS
+      const resolutionScale = Math.max(1, canvas.height / 1080);
+      engine.setHardwareScalingLevel(Math.min(2.5, resolutionScale));
+    };
+
+    const applyCanvasSize = () => {
+      let targetHeight = Math.min(window.innerHeight, maxHeight);
+      let targetWidth = (targetHeight * 9) / 16;
+
+      if (targetWidth > maxWidth) {
+        targetWidth = maxWidth;
+        targetHeight = Math.min((targetWidth * 16) / 9, maxHeight);
+      }
+
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      canvas.style.width = `${targetWidth}px`;
+      canvas.style.height = `${targetHeight}px`;
+      if (engine) {
+        engine.resize();
+        updateHardwareScaling();
+      }
+    };
+
+    applyCanvasSize();
+
+    engine = new BABYLON.Engine(canvas, true);
+    updateHardwareScaling();
     const scene = new BABYLON.Scene(engine);
     // Move camera further back and point at origin
     const camera = new BABYLON.ArcRotateCamera('camera', Math.PI / 2, Math.PI / 2.2, 12, BABYLON.Vector3.Zero(), scene);
@@ -95,12 +125,19 @@ const BabylonCanvas: React.FC = () => {
       }
     );
     engine.runRenderLoop(() => scene.render());
+    window.addEventListener('resize', applyCanvasSize);
     return () => {
+      window.removeEventListener('resize', applyCanvasSize);
       engine.dispose();
     };
   }, []);
 
-  return <canvas ref={canvasRef} width={800} height={600} style={{ display: 'block' }} />;
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ display: 'block', margin: '0 auto' }}
+    />
+  );
 };
 
 export default BabylonCanvas;
