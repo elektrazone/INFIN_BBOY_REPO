@@ -15,23 +15,34 @@ const BabylonCanvas: React.FC = () => {
     engine.setHardwareScalingLevel(window.devicePixelRatio);
     const scene = new BABYLON.Scene(engine);
     // Move camera further back and point at origin
-    const camera = new BABYLON.ArcRotateCamera('camera', Math.PI / 2, Math.PI / 2.2, 8, BABYLON.Vector3.Zero(), scene);
+    const camera = new BABYLON.ArcRotateCamera('camera', Math.PI / 2, Math.PI / 2.2, 12, BABYLON.Vector3.Zero(), scene);
     camera.attachControl(canvas, true);
-    camera.lowerRadiusLimit = 2;
-    camera.upperRadiusLimit = 20;
+    camera.lowerRadiusLimit = 6;
+    camera.upperRadiusLimit = 80;
     camera.wheelPrecision = 50;
     new BABYLON.HemisphericLight('light', new BABYLON.Vector3(0, 1, 0), scene);
+    const dirLight = new BABYLON.DirectionalLight('shadowLight', new BABYLON.Vector3(-1, -2, -1), scene);
+    dirLight.position = new BABYLON.Vector3(5, 10, 5);
+    const shadowGenerator = new BABYLON.ShadowGenerator(1024, dirLight);
+    shadowGenerator.useExponentialShadowMap = true;
     // Add a visible cube for reference
     const cube = BABYLON.MeshBuilder.CreateBox('refCube', { size: 1 }, scene);
     cube.position = new BABYLON.Vector3(0, 0.5, 3); // Place cube in front of camera
-  const cubeMaterial = new BABYLON.StandardMaterial('cubeMat', scene);
-  cubeMaterial.diffuseColor = new BABYLON.Color3(0.2, 0.6, 1);
-  cube.material = cubeMaterial;
+    const cubeMaterial = new BABYLON.StandardMaterial('cubeMat', scene);
+    cubeMaterial.diffuseColor = new BABYLON.Color3(0.2, 0.6, 1);
+    cube.material = cubeMaterial;
+    shadowGenerator.addShadowCaster(cube, true);
+    const ground = BABYLON.MeshBuilder.CreateGround('testGround', { width: 40, height: 40 }, scene);
+    const groundMaterial = new BABYLON.StandardMaterial('groundMat', scene);
+    groundMaterial.diffuseColor = new BABYLON.Color3(0.15, 0.15, 0.15);
+    ground.material = groundMaterial;
+    ground.receiveShadows = true;
 
+    const assetRoot = '/scene/assets/model/';
     // Load player character .glb model with error logging
     BABYLON.SceneLoader.ImportMesh(
       null,
-      '/scene/assets/model/',
+      assetRoot,
       'player.glb',
       scene,
       (meshes, particleSystems, skeletons, animationGroups) => {
@@ -45,6 +56,7 @@ const BabylonCanvas: React.FC = () => {
         const root = meshes[0];
         root.position = new BABYLON.Vector3(0, 0, 0);
         root.scaling = new BABYLON.Vector3(8, 8, 8); // Further increase scale
+        shadowGenerator.addShadowCaster(root, true);
         // Optionally, adjust bounding box
         if (root.getBoundingInfo) {
           const bounding = root.getBoundingInfo();
@@ -57,6 +69,29 @@ const BabylonCanvas: React.FC = () => {
       undefined,
       (scene, message, exception) => {
         console.error('Error loading player.glb:', message, exception);
+      }
+    );
+    // Load surrounding buildings for context
+    BABYLON.SceneLoader.ImportMesh(
+      null,
+      assetRoot,
+      'buildings.glb',
+      scene,
+      meshes => {
+        if (meshes.length === 0) {
+          console.error('No meshes loaded from buildings.glb');
+          return;
+        }
+        meshes.forEach(mesh => {
+          mesh.receiveShadows = true;
+        });
+        const buildingRoot = meshes[0];
+        buildingRoot.scaling = new BABYLON.Vector3(5, 5, 5);
+        buildingRoot.position = BABYLON.Vector3.Zero();
+      },
+      undefined,
+      (scene, message, exception) => {
+        console.error('Error loading buildings.glb:', message, exception);
       }
     );
     engine.runRenderLoop(() => scene.render());
