@@ -59,7 +59,7 @@ const BabylonCanvas: React.FC = () => {
     // Move camera further back and point at origin
     const camera = new BABYLON.ArcRotateCamera('camera', Math.PI / 2, Math.PI / 2.2, 12, BABYLON.Vector3.Zero(), scene);
     camera.attachControl(canvas, true);
-    camera.lowerRadiusLimit = 120;
+    camera.lowerRadiusLimit = 70;
     camera.upperRadiusLimit = 500;
     camera.wheelPrecision = 50;
     new BABYLON.HemisphericLight('light', new BABYLON.Vector3(0, 1, 0), scene);
@@ -74,7 +74,7 @@ const BabylonCanvas: React.FC = () => {
     cubeMaterial.diffuseColor = new BABYLON.Color3(0.2, 0.6, 1);
     cube.material = cubeMaterial;
     shadowGenerator.addShadowCaster(cube, true);
-    const groundDimensions = { width: 200, height: 430 };
+    const groundDimensions = { width: 200, height: 340 };
     const groundBaseOffset = new BABYLON.Vector3(0, 0, 30);
     const ground = BABYLON.MeshBuilder.CreateGround('testGround', groundDimensions, scene);
     const groundMaterial = new BABYLON.StandardMaterial('groundMat', scene);
@@ -84,9 +84,6 @@ const BabylonCanvas: React.FC = () => {
     const roadContext = roadTexture.getContext();
     roadContext.fillStyle = '#1a1a1a';
     roadContext.fillRect(0, 0, roadTextureSize, roadTextureSize);
-    roadContext.fillStyle = '#0f0f0f';
-    roadContext.fillRect(0, 0, roadTextureSize, roadTextureSize * 0.08);
-    roadContext.fillRect(0, roadTextureSize * 0.92, roadTextureSize, roadTextureSize * 0.08);
     roadContext.fillStyle = '#ffd35b';
     const stripeHeight = roadTextureSize * 0.01;
     const stripeGap = roadTextureSize * 0.01;
