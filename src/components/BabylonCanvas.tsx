@@ -423,7 +423,10 @@ const BabylonCanvas: React.FC = () => {
     }
 
     // Use a relative path so deployments served from a subdirectory (e.g. GitHub Pages) can find the assets
-    const assetRoot = 'scene/assets/model/';
+    const isGithubPages = typeof window !== 'undefined' && window.location.hostname.endsWith('github.io');
+    const assetRoot = isGithubPages
+      ? 'https://raw.githubusercontent.com/elektrazone/INFIN_BBOY_REPO/main/public/scene/assets/model/'
+      : 'scene/assets/model/';
     // Load player character .glb model with error logging
     BABYLON.SceneLoader.ImportMesh(
       null,

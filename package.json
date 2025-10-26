@@ -18,6 +18,7 @@
     "@types/react-dom": "^19.2.2",
     "copy-webpack-plugin": "^13.0.1",
     "css-loader": "^7.1.2",
+    "gltfpack": "^0.25.0",
     "html-webpack-plugin": "^5.6.4",
     "style-loader": "^4.0.0",
     "ts-loader": "^9.5.4",
