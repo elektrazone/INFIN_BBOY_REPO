@@ -422,7 +422,8 @@ const BabylonCanvas: React.FC = () => {
       createGroundSegment(i);
     }
 
-    const assetRoot = '/scene/assets/model/';
+    // Use a relative path so deployments served from a subdirectory (e.g. GitHub Pages) can find the assets
+    const assetRoot = 'scene/assets/model/';
     // Load player character .glb model with error logging
     BABYLON.SceneLoader.ImportMesh(
       null,
