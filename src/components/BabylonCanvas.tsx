@@ -423,10 +423,7 @@ const BabylonCanvas: React.FC = () => {
     }
 
     // Use a relative path so deployments served from a subdirectory (e.g. GitHub Pages) can find the assets
-    const isGithubPages = typeof window !== 'undefined' && window.location.hostname.endsWith('github.io');
-    const assetRoot = isGithubPages
-      ? 'https://media.githubusercontent.com/media/elektrazone/INFIN_BBOY_REPO/main/public/scene/assets/model/'
-      : 'scene/assets/model/';
+    const assetRoot = 'scene/assets/model/';
     // Load player character .glb model with error logging
     BABYLON.SceneLoader.ImportMesh(
       null,
@@ -463,7 +460,7 @@ const BabylonCanvas: React.FC = () => {
         console.error('Error loading player.glb:', message, exception);
       }
     );
-    // Load surrounding buildings for context using b1–b10 assets
+    // Load surrounding buildings for context using the B-series assets
     const buildingModelFiles = Array.from({ length: 10 }, (_, index) => `b${index + 1}.glb`);
     const loadBuildingMeshes = (fileName: string) =>
       BABYLON.SceneLoader.ImportMeshAsync(null, assetRoot, fileName, scene).then(result =>
@@ -487,13 +484,6 @@ const BabylonCanvas: React.FC = () => {
             scaling: BABYLON.Vector3;
           }
         >();
-        const baseRoot = new BABYLON.TransformNode('buildingsBaseRoot', scene);
-        baseRoot.position = BABYLON.Vector3.Zero();
-        const B_a_group = new BABYLON.TransformNode('B_a_group', scene);
-        B_a_group.parent = baseRoot;
-        const B_b_group = new BABYLON.TransformNode('B_b_group', scene);
-        B_b_group.parent = baseRoot;
-        B_b_group.rotation = new BABYLON.Vector3(0, Math.PI, 0);
 
         buildingMeshes.forEach(mesh => {
           mesh.scaling = mesh.scaling.scale(environmentScale);
@@ -503,11 +493,8 @@ const BabylonCanvas: React.FC = () => {
             rotationQuaternion: mesh.rotationQuaternion ? mesh.rotationQuaternion.clone() : null,
             scaling: mesh.scaling.clone(),
           });
-          mesh.parent = B_a_group;
-          mesh.isVisible = true;
-          mesh.setEnabled(true);
-          mesh.receiveShadows = true;
-          mesh.alwaysSelectAsActiveMesh = true;
+          mesh.isVisible = false;
+          mesh.setEnabled(false);
         });
 
         const applyTransform = (target: BABYLON.AbstractMesh, source: BABYLON.Mesh) => {
@@ -526,13 +513,28 @@ const BabylonCanvas: React.FC = () => {
           }
         };
 
-        buildingMeshes.forEach(mesh => {
-          const instance = mesh.createInstance(`${mesh.name}-B_b_base`);
-          instance.parent = B_b_group;
-          applyTransform(instance, mesh);
-          instance.receiveShadows = true;
-          instance.alwaysSelectAsActiveMesh = true;
-        });
+        const createBuildingGroup = (
+          parent: BABYLON.TransformNode,
+          name: string,
+          rotationY: number
+        ) => {
+          const group = new BABYLON.TransformNode(name, scene);
+          group.parent = parent;
+          group.rotation = new BABYLON.Vector3(0, rotationY, 0);
+          buildingMeshes.forEach(mesh => {
+            const instance = mesh.createInstance(`${mesh.name}-${name}`);
+            instance.parent = group;
+            applyTransform(instance, mesh);
+            instance.receiveShadows = true;
+            instance.alwaysSelectAsActiveMesh = true;
+          });
+          return group;
+        };
+
+        const baseRoot = new BABYLON.TransformNode('buildingsSeg-0', scene);
+        baseRoot.position = BABYLON.Vector3.Zero();
+        createBuildingGroup(baseRoot, 'B_a_group_seg-0', 0);
+        createBuildingGroup(baseRoot, 'B_b_group_seg-0', Math.PI);
 
         const { min, max } = baseRoot.getHierarchyBoundingVectors();
         const rawSpacing = Math.abs(max.z - min.z);
@@ -546,30 +548,11 @@ const BabylonCanvas: React.FC = () => {
           buildingSegments.push(root);
         };
 
-        const attachGroupInstances = (
-          parent: BABYLON.TransformNode,
-          suffix: string,
-          rotateY: number
-        ) => {
-          parent.rotation = new BABYLON.Vector3(0, rotateY, 0);
-          buildingMeshes.forEach(mesh => {
-            const instance = mesh.createInstance(`${mesh.name}-${suffix}`);
-            instance.parent = parent;
-            applyTransform(instance, mesh);
-            instance.receiveShadows = true;
-            instance.alwaysSelectAsActiveMesh = true;
-          });
-        };
-
         const createSegment = (index: number) => {
           const segmentRoot = new BABYLON.TransformNode(`buildingsSeg-${index}`, scene);
           segmentRoot.position = new BABYLON.Vector3(0, 0, -index * segmentSpacing);
-          const segmentA = new BABYLON.TransformNode(`B_a_group_seg-${index}`, scene);
-          segmentA.parent = segmentRoot;
-          attachGroupInstances(segmentA, `seg-${index}-A`, 0);
-          const segmentB = new BABYLON.TransformNode(`B_b_group_seg-${index}`, scene);
-          segmentB.parent = segmentRoot;
-          attachGroupInstances(segmentB, `seg-${index}-B`, Math.PI);
+          createBuildingGroup(segmentRoot, `B_a_group_seg-${index}`, 0);
+          createBuildingGroup(segmentRoot, `B_b_group_seg-${index}`, Math.PI);
           registerBuildingSegment(segmentRoot, index);
         };
 
@@ -580,6 +563,7 @@ const BabylonCanvas: React.FC = () => {
           }
         } else {
           baseRoot.position = BABYLON.Vector3.Zero();
+          registerBuildingSegment(baseRoot, 0);
         }
 
         scrollObserver = scene.onBeforeRenderObservable.add(() => {
