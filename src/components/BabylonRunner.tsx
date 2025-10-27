@@ -54,6 +54,9 @@ const BabylonRunner: React.FC = () => {
     engine = new BABYLON.Engine(canvas, true);
     updateHardwareScaling();
     const scene = new BABYLON.Scene(engine);
+    const environmentScale = 8;
+    const buildingSegments: BABYLON.TransformNode[] = [];
+    let buildingSegmentSpacing = 0;
     const groundSegments: BABYLON.TransformNode[] = [];
     let scrollObserver: BABYLON.Nullable<BABYLON.Observer<BABYLON.Scene>> = null;
     const baseScrollSpeed = 102; // units per second
@@ -339,6 +342,44 @@ const BabylonRunner: React.FC = () => {
       createGroundSegment(i);
     }
 
+    const advanceSegments = (segments: BABYLON.TransformNode[], spacing: number, movement: number) => {
+      if (segments.length === 0) {
+        return;
+      }
+      segments.forEach(segment => {
+        segment.position.z += movement;
+      });
+      let minZ = Infinity;
+      segments.forEach(segment => {
+        if (segment.position.z < minZ) {
+          minZ = segment.position.z;
+        }
+      });
+      segments.forEach(segment => {
+        if (segment.position.z > spacing) {
+          segment.position.z = minZ - spacing;
+        }
+      });
+    };
+
+    scrollObserver = scene.onBeforeRenderObservable.add(() => {
+      const deltaSeconds = scene.getEngine().getDeltaTime() / 1000;
+      const movement = activeScrollSpeed * deltaSeconds;
+      if (movement === 0) {
+        return;
+      }
+      advanceSegments(groundSegments, groundSegmentSpacing, movement);
+      if (buildingSegmentSpacing > 0) {
+        advanceSegments(buildingSegments, buildingSegmentSpacing, movement);
+      }
+      groundTextureState.offset += movement / groundSegmentSpacing;
+      groundTextureState.offset %= 1;
+      if (groundTextureState.offset < 0) {
+        groundTextureState.offset += 1;
+      }
+      roadTexture.vOffset = groundTextureState.offset;
+    });
+
     // Use a relative path so deployments served from a subdirectory (e.g. GitHub Pages) can find the assets
     const isGithubPages = typeof window !== 'undefined' && window.location.hostname.endsWith('github.io');
     const assetRoot = isGithubPages
@@ -380,33 +421,117 @@ const BabylonRunner: React.FC = () => {
         console.error('Error loading player.glb:', message, exception);
       }
     );
-    scrollObserver = scene.onBeforeRenderObservable.add(() => {
-      const deltaSeconds = scene.getEngine().getDeltaTime() / 1000;
-      const movement = activeScrollSpeed * deltaSeconds;
-      if (movement === 0) {
-        return;
-      }
-      groundSegments.forEach(segment => {
-        segment.position.z += movement;
-      });
-      let minZ = Infinity;
-      groundSegments.forEach(segment => {
-        if (segment.position.z < minZ) {
-          minZ = segment.position.z;
+    // Load surrounding buildings for context using the B-series assets
+    const buildingModelFiles = Array.from({ length: 10 }, (_, index) => `b${index + 1}.glb`);
+    const loadBuildingMeshes = (fileName: string) =>
+      BABYLON.SceneLoader.ImportMeshAsync(null, assetRoot, fileName, scene).then(result =>
+        result.meshes.filter((mesh): mesh is BABYLON.Mesh => mesh instanceof BABYLON.Mesh)
+      );
+
+    Promise.all(buildingModelFiles.map(loadBuildingMeshes))
+      .then(meshGroups => {
+        const buildingMeshes = meshGroups.flat();
+        if (buildingMeshes.length === 0) {
+          console.error('No renderable meshes found in b1–b10 assets.');
+          return;
         }
-      });
-      groundSegments.forEach(segment => {
-        if (segment.position.z > groundSegmentSpacing) {
-          segment.position.z = minZ - groundSegmentSpacing;
+
+        const meshTransforms = new Map<
+          BABYLON.Mesh,
+          {
+            position: BABYLON.Vector3;
+            rotation: BABYLON.Nullable<BABYLON.Vector3>;
+            rotationQuaternion: BABYLON.Nullable<BABYLON.Quaternion>;
+            scaling: BABYLON.Vector3;
+          }
+        >();
+
+        buildingMeshes.forEach(mesh => {
+          mesh.scaling = mesh.scaling.scale(environmentScale);
+          meshTransforms.set(mesh, {
+            position: mesh.position.clone(),
+            rotation: mesh.rotation ? mesh.rotation.clone() : null,
+            rotationQuaternion: mesh.rotationQuaternion ? mesh.rotationQuaternion.clone() : null,
+            scaling: mesh.scaling.clone(),
+          });
+          mesh.isVisible = false;
+          mesh.setEnabled(false);
+        });
+
+        const applyTransform = (target: BABYLON.AbstractMesh, source: BABYLON.Mesh) => {
+          const originalTransform = meshTransforms.get(source);
+          if (!originalTransform) {
+            return;
+          }
+          target.position = originalTransform.position.clone();
+          target.scaling = originalTransform.scaling.clone();
+          if (originalTransform.rotationQuaternion) {
+            target.rotationQuaternion = originalTransform.rotationQuaternion.clone();
+            target.rotation = BABYLON.Vector3.Zero();
+          } else if (originalTransform.rotation) {
+            target.rotation = originalTransform.rotation.clone();
+            target.rotationQuaternion = null;
+          }
+        };
+
+        const createBuildingGroup = (
+          parent: BABYLON.TransformNode,
+          name: string,
+          rotationY: number
+        ) => {
+          const group = new BABYLON.TransformNode(name, scene);
+          group.parent = parent;
+          group.rotation = new BABYLON.Vector3(0, rotationY, 0);
+          buildingMeshes.forEach(mesh => {
+            const instance = mesh.createInstance(`${mesh.name}-${name}`);
+            instance.parent = group;
+            applyTransform(instance, mesh);
+            instance.receiveShadows = true;
+            instance.alwaysSelectAsActiveMesh = true;
+          });
+          return group;
+        };
+
+        const baseRoot = new BABYLON.TransformNode('buildingsSeg-0', scene);
+        baseRoot.position = BABYLON.Vector3.Zero();
+        createBuildingGroup(baseRoot, 'B_a_group_seg-0', 0);
+        createBuildingGroup(baseRoot, 'B_b_group_seg-0', Math.PI);
+
+        const { min, max } = baseRoot.getHierarchyBoundingVectors();
+        const rawSpacing = Math.abs(max.z - min.z);
+        const overlapCompensation = 1;
+        const segmentSpacing = Math.max(rawSpacing - overlapCompensation, 10);
+        buildingSegmentSpacing = segmentSpacing;
+        const includeClonedSegments = true;
+        const segmentCount = includeClonedSegments ? 6 : 1;
+
+        const registerBuildingSegment = (root: BABYLON.TransformNode, index: number) => {
+          root.position = new BABYLON.Vector3(0, 0, -index * segmentSpacing);
+          buildingSegments.push(root);
+        };
+
+        const createSegment = (index: number) => {
+          const segmentRoot = new BABYLON.TransformNode(`buildingsSeg-${index}`, scene);
+          segmentRoot.position = new BABYLON.Vector3(0, 0, -index * segmentSpacing);
+          createBuildingGroup(segmentRoot, `B_a_group_seg-${index}`, 0);
+          createBuildingGroup(segmentRoot, `B_b_group_seg-${index}`, Math.PI);
+          registerBuildingSegment(segmentRoot, index);
+        };
+
+        if (includeClonedSegments) {
+          registerBuildingSegment(baseRoot, 0);
+          for (let i = 1; i < segmentCount; i += 1) {
+            createSegment(i);
+          }
+        } else {
+          baseRoot.position = BABYLON.Vector3.Zero();
+          registerBuildingSegment(baseRoot, 0);
         }
+
+      })
+      .catch(error => {
+        console.error('Error loading building assets:', error);
       });
-      groundTextureState.offset += movement / groundSegmentSpacing;
-      groundTextureState.offset %= 1;
-      if (groundTextureState.offset < 0) {
-        groundTextureState.offset += 1;
-      }
-      roadTexture.vOffset = groundTextureState.offset;
-    });
     engine.runRenderLoop(() => {
       ensureIdle();
       scene.render();
@@ -425,6 +550,7 @@ const BabylonRunner: React.FC = () => {
         scene.onBeforeRenderObservable.remove(playerMotionObserver);
       }
       stopCurrentAnimation();
+      buildingSegments.forEach(segment => segment.dispose());
       groundSegments.forEach(segment => segment.dispose());
       engine.dispose();
     };
