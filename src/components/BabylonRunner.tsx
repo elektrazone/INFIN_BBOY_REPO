@@ -315,21 +315,131 @@ const BabylonRunner: React.FC = () => {
     ));
     shadowGenerator.useExponentialShadowMap = true;
 
-    const groundSegmentCount = 8;
-    const groundSegmentLength = 160;
+    const isGithubPages = typeof window !== 'undefined' && window.location.hostname.endsWith('github.io');
+    const assetBase = isGithubPages
+      ? 'https://media.githubusercontent.com/media/elektrazone/INFIN_BBOY_REPO/main/public/scene/assets/'
+      : 'scene/assets/';
+    const modelRoot = `${assetBase}model/`;
+    const textureRoot = `${assetBase}road/`;
+
+    const groundSegmentCount = 1;
+    const groundWidth = 250;
+    const groundLength = 1000;
+    const groundSegmentLength = groundLength;
     const groundSegmentSpacing = groundSegmentLength;
-    const groundTexture = new BABYLON.Texture('scene/assets/road/road_texture.jpg', scene);
-    groundTexture.uScale = 1;
-    groundTexture.vScale = groundSegmentCount;
+    const roadTextureRepeatPerSegment = 2;
+    const roadTextureTiling = {
+      u: 1,
+      v: Math.max(1, groundSegmentCount * roadTextureRepeatPerSegment),
+    };
+    const stripePattern = {
+      widthFraction: 0.001,
+      heightFraction: 0.1,
+      gapMultiplier: 1.6,
+      startOffsetFraction: 0.35,
+    };
     const groundMaterial = new BABYLON.StandardMaterial('groundMaterial', scene);
-    groundMaterial.diffuseTexture = groundTexture;
+    groundMaterial.diffuseColor = new BABYLON.Color3(0.12, 0.12, 0.14);
+    groundMaterial.specularColor = new BABYLON.Color3(0.02, 0.02, 0.02);
+    groundMaterial.emissiveColor = new BABYLON.Color3(0.01, 0.01, 0.012);
+
+    const createFallbackRoadTextures = () => {
+      // Use a custom fallback texture image if packaged, otherwise draw one procedurally
+      const packagedTextureUrl = `${textureRoot}fallback-road-texture.png`;
+      const packagedTexture = new BABYLON.Texture(
+        packagedTextureUrl,
+        scene,
+        undefined,
+        false,
+        BABYLON.Texture.TRILINEAR_SAMPLINGMODE,
+        undefined,
+        () => {
+          packagedTexture.dispose();
+        }
+      );
+      packagedTexture.onLoadObservable.addOnce(() => {
+        packagedTexture.updateSamplingMode(BABYLON.Texture.TRILINEAR_SAMPLINGMODE);
+      });
+      // Fallback dynamic texture for when the packaged asset is missing
+      const dynamicTexture = new BABYLON.DynamicTexture('runner-road-fallback', { width: 1024, height: 1024 }, scene, false);
+      const context = dynamicTexture.getContext();
+      if (context) {
+        const textureSize = 1024;
+        context.fillStyle = '#201f2b';
+        context.fillRect(0, 0, textureSize, textureSize);
+        context.fillStyle = '#14131d';
+        context.fillRect(0, textureSize * 0.08, textureSize, textureSize * 0.84);
+        context.fillStyle = '#fcd75a';
+        const stripeWidth = Math.max(1, Math.round(textureSize * stripePattern.widthFraction));
+        const stripeHeight = Math.max(1, Math.round(textureSize * stripePattern.heightFraction));
+        const stripeGap = Math.max(1, stripeHeight * stripePattern.gapMultiplier);
+        const stripeX = (textureSize - stripeWidth) / 2;
+        for (
+          let y = textureSize * stripePattern.startOffsetFraction;
+          y < textureSize + stripeHeight;
+          y += stripeHeight + stripeGap
+        ) {
+          context.fillRect(stripeX, y, stripeWidth, stripeHeight);
+        }
+      }
+      dynamicTexture.update(false);
+      return { packagedTexture, dynamicTexture };
+    };
+
+    const applyRoadTextureSettings = (texture: BABYLON.Texture) => {
+      texture.uScale = roadTextureTiling.u;
+      texture.vScale = roadTextureTiling.v;
+      texture.wrapU = BABYLON.Texture.CLAMP_ADDRESSMODE;
+      texture.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
+      texture.hasAlpha = false;
+    };
+
+    const { packagedTexture, dynamicTexture } = createFallbackRoadTextures();
+    applyRoadTextureSettings(dynamicTexture);
+    groundMaterial.diffuseTexture = dynamicTexture;
+    let activeRoadTexture: BABYLON.Texture = dynamicTexture;
+
     const groundTextureState = { offset: 0 };
-    const roadTexture = groundTexture;
+    let roadTexture: BABYLON.Nullable<BABYLON.Texture> = null;
+    const setActiveRoadTexture = (texture: BABYLON.Texture) => {
+      applyRoadTextureSettings(texture);
+      groundMaterial.diffuseTexture = texture;
+      activeRoadTexture = texture;
+    };
+    packagedTexture.onLoadObservable.addOnce(() => {
+      setActiveRoadTexture(packagedTexture);
+    });
+    const textureUrl = `${textureRoot}road_texture.jpg`;
+    roadTexture = new BABYLON.Texture(
+      textureUrl,
+      scene,
+      undefined,
+      false,
+      BABYLON.Texture.TRILINEAR_SAMPLINGMODE,
+      () => {
+        if (!roadTexture) {
+          return;
+        }
+        setActiveRoadTexture(roadTexture);
+      },
+      () => {
+        if (packagedTexture && packagedTexture.isReady()) {
+          setActiveRoadTexture(packagedTexture);
+        } else {
+          setActiveRoadTexture(dynamicTexture);
+        }
+      }
+    );
+    roadTexture.onLoadObservable.addOnce(() => {
+      if (roadTexture) {
+        setActiveRoadTexture(roadTexture);
+      }
+    });
 
     const createGroundSegment = (index: number) => {
       const ground = BABYLON.MeshBuilder.CreateGround(
         `ground-${index}`,
-        { width: 40, height: groundSegmentLength },
+        { width: groundWidth, height: groundSegmentLength },
         scene
       );
       ground.position = new BABYLON.Vector3(0, 0, -index * groundSegmentSpacing);
@@ -377,14 +487,11 @@ const BabylonRunner: React.FC = () => {
       if (groundTextureState.offset < 0) {
         groundTextureState.offset += 1;
       }
-      roadTexture.vOffset = groundTextureState.offset;
+      activeRoadTexture.vOffset = groundTextureState.offset;
     });
 
     // Use a relative path so deployments served from a subdirectory (e.g. GitHub Pages) can find the assets
-    const isGithubPages = typeof window !== 'undefined' && window.location.hostname.endsWith('github.io');
-    const assetRoot = isGithubPages
-      ? 'https://media.githubusercontent.com/media/elektrazone/INFIN_BBOY_REPO/main/public/scene/assets/model/'
-      : 'scene/assets/model/';
+    const assetRoot = modelRoot;
     // Load player character .glb model with error logging
     BABYLON.SceneLoader.ImportMesh(
       null,
@@ -398,19 +505,37 @@ const BabylonRunner: React.FC = () => {
           console.error('No meshes loaded from player.glb');
           return;
         }
-        // Center and scale the player character for visibility
-        const root = meshes[0];
-        root.position = new BABYLON.Vector3(0, 0, 0);
-        root.scaling = new BABYLON.Vector3(8, 8, 8); // Further increase scale
+        const root = new BABYLON.TransformNode('playerRoot', scene);
+        meshes.forEach(mesh => {
+          mesh.parent = root;
+          mesh.alwaysSelectAsActiveMesh = true;
+          mesh.setEnabled(true);
+          if (mesh instanceof BABYLON.Mesh) {
+            mesh.receiveShadows = true;
+            shadowGenerator.addShadowCaster(mesh, true);
+          }
+        });
+        root.position = BABYLON.Vector3.Zero();
+        root.scaling = BABYLON.Vector3.One();
+        root.computeWorldMatrix(true);
+        const { min: rawMin, max: rawMax } = root.getHierarchyBoundingVectors();
+        const rawHeight = rawMax.y - rawMin.y;
+        const desiredHeight = 3.2;
+        const scaleFactor = rawHeight > 0 ? desiredHeight / rawHeight : 1;
+        root.scaling = new BABYLON.Vector3(scaleFactor, scaleFactor, scaleFactor);
+        root.computeWorldMatrix(true);
+        const { min: scaledMin, max: scaledMax } = root.getHierarchyBoundingVectors();
+        const scaledCenter = scaledMin.add(scaledMax).scale(0.5);
+        const playerStartOffsetZ = 7.5;
+        const verticalPadding = 0.05;
+        root.position = new BABYLON.Vector3(
+          -scaledCenter.x,
+          -scaledMin.y + verticalPadding,
+          -scaledCenter.z + playerStartOffsetZ
+        );
+        root.computeWorldMatrix(true);
         playerRoot = root;
         playerSkeleton = skeletons[0] || null;
-        shadowGenerator.addShadowCaster(root, true);
-        // Optionally, adjust bounding box
-        if (root.getBoundingInfo) {
-          const bounding = root.getBoundingInfo();
-          const center = bounding.boundingBox.centerWorld;
-          root.position = root.position.subtract(center);
-        }
         playerAnimationGroup = animationGroups[0] || null;
         animationGroups.forEach(group => group.stop());
         // Configure animation controller
