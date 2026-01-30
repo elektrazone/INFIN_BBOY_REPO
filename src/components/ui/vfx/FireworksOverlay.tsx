@@ -1,13 +1,18 @@
-import React, { useCallback } from 'react';
-import Particles from "react-tsparticles";
-import { loadSlim } from "tsparticles-slim";
-import { loadFireworksPreset } from "tsparticles-preset-fireworks";
-import { Engine } from "tsparticles-engine";
+import React, { useEffect, useState } from 'react';
+import Particles, { initParticlesEngine } from "@tsparticles/react";
+import { loadSlim } from "@tsparticles/slim";
+import { loadFireworksPreset } from "@tsparticles/preset-fireworks";
 
 export const FireworksOverlay: React.FC = () => {
-    const particlesInit = useCallback(async (engine: Engine) => {
-        await loadSlim(engine);
-        await loadFireworksPreset(engine); // Restore this to load necessary plugins
+    const [init, setInit] = useState(false);
+
+    useEffect(() => {
+        initParticlesEngine(async (engine) => {
+            await loadSlim(engine);
+            await loadFireworksPreset(engine);
+        }).then(() => {
+            setInit(true);
+        });
     }, []);
 
     const options = {
@@ -18,7 +23,7 @@ export const FireworksOverlay: React.FC = () => {
             detectsOn: "window" as const,
             events: {
                 onClick: { enable: true, mode: "push" },
-                resize: true,
+                resize: { enable: true },
             },
         },
         emitters: {
@@ -145,6 +150,10 @@ export const FireworksOverlay: React.FC = () => {
         },
     };
 
+    if (!init) {
+        return null;
+    }
+
     return (
         <div style={{
             position: 'absolute',
@@ -157,7 +166,6 @@ export const FireworksOverlay: React.FC = () => {
         }}>
             <Particles
                 id="tsparticles"
-                init={particlesInit}
                 options={options}
                 style={{
                     position: 'absolute',
@@ -165,7 +173,6 @@ export const FireworksOverlay: React.FC = () => {
                     left: 0,
                     width: '100%',
                     height: '100%',
-                    // removed background: transparent here, handled by options
                 }}
             />
         </div>
