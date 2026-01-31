@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import Particles, { initParticlesEngine } from "@tsparticles/react";
 import { loadSlim } from "@tsparticles/slim";
 import { loadFireworksPreset } from "@tsparticles/preset-fireworks";
+import type { Engine } from "@tsparticles/engine";
 
 export const FireworksOverlay: React.FC = () => {
     const [init, setInit] = useState(false);
 
     useEffect(() => {
-        initParticlesEngine(async (engine) => {
+        initParticlesEngine(async (engine: Engine) => {
             await loadSlim(engine);
             await loadFireworksPreset(engine);
         }).then(() => {
