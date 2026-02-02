@@ -2,6 +2,10 @@
 import "./styles/main.css";
 import { babylonRunner } from "./components/babylonRunner";
 import { initReactOverlay } from "./components/ui/bootstrap";
+import { messagingService } from "./services/messagingService";
+
+// Initialize messaging service early
+messagingService.init();
 
 
 window.addEventListener("DOMContentLoaded", () => {

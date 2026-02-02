@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { messagingService } from '../services/messagingService';
 
 /**
  * Game state types
@@ -259,3 +260,19 @@ export const useGameStore = create<GameStore>((set) => ({
         set({ ...INITIAL_STATE, isLoading: false, showIntroScreen: false, countdownValue: null });
     },
 }));
+
+/**
+ * Subscribe to the store to handle automated messaging notifications
+ */
+useGameStore.subscribe((state, prevState) => {
+    // Notify when state changes to 'victory' or 'gameover'
+    if (state.gameState !== prevState.gameState) {
+        if (state.gameState === 'victory' || state.gameState === 'gameover') {
+            const finalScore = state.score;
+            const finalCoins = state.coinCount;
+
+            console.log(`✉️ Auto-notifying end state: ${state.gameState}`);
+            messagingService.notifyGameEnd(state.gameState, finalScore, finalCoins);
+        }
+    }
+});

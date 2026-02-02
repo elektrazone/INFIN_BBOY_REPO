@@ -444,8 +444,8 @@ Target: (${camera.target.x.toFixed(1)}, ${camera.target.y.toFixed(1)}, ${camera.
     previousGameState = gameState;
 
     // User requested panning ONLY in Pause/Idle. 
-    // So block if gameover.
-    if (gameState === "gameover") return;
+    // So block if gameover or victory sequence is active.
+    if (gameState === "gameover" || player.isVictorySequenceActive()) return;
 
     const panSpeed = 2.5;
 

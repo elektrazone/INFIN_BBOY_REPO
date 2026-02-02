@@ -5,10 +5,10 @@
 
 export const CAMERA_DEFAULTS = {
     alpha: 1.57,         // From Shift+C save
-    beta: 0.97,          // From Shift+C save
-    radius: 55.07,       // From Shift+C save
-    targetX: -0.4,       // From Shift+C save
-    targetY: -11.2,       // From Shift+C save
-    targetZ: 2.7,       // From Shift+C save
+    beta: 1.08,          // From Shift+C save
+    radius: 30.11,       // From Shift+C save
+    targetX: 0.5,       // From Shift+C save
+    targetY: 1.3,       // From Shift+C save
+    targetZ: -5.9,       // From Shift+C save
     fov: 1.50,           // From Shift+C save (85.9°)
 };

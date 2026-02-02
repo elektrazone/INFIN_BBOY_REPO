@@ -53,6 +53,7 @@ export interface ObstacleInstance {
   variant?: number;
   isHamburgerVariant?: boolean;
   active: boolean;
+  speedMultiplier?: number;
 }
 
 // ... [BUILDER FUNCTIONS RIMANGONO INVARIATE: buildJumpObstacle, buildDuckObstacle, etc.] ...
@@ -147,6 +148,14 @@ export function createObstacleSystem(
     if (pooled) {
       pooled.active = true;
       pooled.mesh.setEnabled(true);
+
+      // Randomize speed for platforms when re-acquired
+      if (type === "platform") {
+        pooled.speedMultiplier = 1.2 + Math.random() * 1.0; // 1.2 to 2.2
+      } else {
+        pooled.speedMultiplier = 1.0;
+      }
+
       return pooled;
     }
 
@@ -188,7 +197,8 @@ export function createObstacleSystem(
       type,
       variant: variantUsed,
       isHamburgerVariant,
-      active: true
+      active: true,
+      speedMultiplier: type === "platform" ? (1.2 + Math.random() * 1.0) : 1.0
     };
     obstaclePool.push(created);
     return created;
@@ -396,7 +406,10 @@ export function createObstacleSystem(
     const movement = speed * dt;
 
     for (const obs of activeObstacles) {
-      obs.mesh.position.z += movement;
+      // Each platform has its own speedMultiplier
+      const multiplier = obs.speedMultiplier || 1.0;
+      obs.mesh.position.z += movement * multiplier;
+
       if (obs.type === "insuperable") {
         const sourceUrl = obs.mesh.metadata?.sourceUrl || "";
         if (sourceUrl.toLowerCase().includes("soda")) {

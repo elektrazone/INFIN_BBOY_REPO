@@ -1,9 +1,9 @@
 {
   "alpha": 1.57,
-  "beta": 0.97,
-  "radius": 55.07,
-  "targetX": -0.4,
-  "targetY": -11.2,
-  "targetZ": 2.7,
+  "beta": 1.08,
+  "radius": 30.11,
+  "targetX": 0.5,
+  "targetY": 1.3,
+  "targetZ": -5.9,
   "fov": 1.5
 }

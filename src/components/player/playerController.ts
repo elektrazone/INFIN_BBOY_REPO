@@ -12,6 +12,7 @@ import { FallingCubeRoadController } from "../world/fallingCubeRoad";
 import { useGameStore } from "../../store/gameStore";
 import { createImpactVFX } from "./impactVFX";
 import { getAudioManager } from "../audio/audioManager";
+import { CAMERA_DEFAULTS } from "../../config/cameraDefaults";
 export type PlayerAABB = { min: BABYLON.Vector3; max: BABYLON.Vector3 };
 
 export interface PlayerController {
@@ -28,6 +29,7 @@ export interface PlayerController {
   reset(): void;
   triggerCheer(): void;
   triggerVictorySequence(): void;
+  isVictorySequenceActive(): boolean;
   cameraTarget?: BABYLON.TransformNode; // Exposed for manual panning
 }
 
@@ -98,6 +100,7 @@ export function setupPlayerController(
   let requestedStart = false;
   let isFirstStart = true; // Track if this is the very first game start
   let introPlaying = false; // Track if intro sequence is active
+  let isVictorySequenceActive = false; // Block input and trigger orbit
   let activeZoomObserver: BABYLON.Observer<BABYLON.Scene> | null = null;
 
   // ------------------------------------------
@@ -521,22 +524,6 @@ export function setupPlayerController(
     }
 
     // ------------------------------------------
-    // REPAIR ROAD AROUND PLAYER (Give running room on respawn)
-    // ------------------------------------------
-    if (fallingCubeRoadController && playerRoot) {
-      // Fill gaps at player position and ahead of them
-      for (let zOffset = 0; zOffset >= -60; zOffset -= 15) {
-        for (let xOffset = -15; xOffset <= 15; xOffset += 15) {
-          fallingCubeRoadController.fillGapAt(
-            playerRoot.position.x + xOffset,
-            playerRoot.position.z + zOffset
-          );
-        }
-      }
-      console.log("🩹 Repaired road around player for safe respawn");
-    }
-
-    // ------------------------------------------
     // SAVED OFFSET FOR CAMERA (Prevent overhead snap)
     // ------------------------------------------
     let savedYOffset: number | null = null;
@@ -714,8 +701,8 @@ export function setupPlayerController(
 
     // R key restart - REMOVED (use UI buttons instead)
 
-    // MOVEMENT INPUTS - Only if playing
-    if (!isGameActive()) return;
+    // MOVEMENT INPUTS - Only if playing and NOT in victory sequence
+    if (!isGameActive() || isVictorySequenceActive) return;
 
     switch (event.code) {
       case "ArrowLeft":
@@ -924,11 +911,6 @@ export function setupPlayerController(
         playerRoot.position.y = baseY;
         jumpMotion.velocity = 0;
 
-        // SAFE RESPAWN: Ensure there is a cube underneath
-        if (fallingCubeRoadController) {
-          fallingCubeRoadController.fillGapAt(playerRoot.position.x, playerRoot.position.z);
-        }
-
         // RESTORE CAMERA OFFSET (Fix Snap on Respawn)
         if (cameraTarget && savedYOffset !== null) {
           cameraTarget.position.y = playerRoot.position.y + savedYOffset;
@@ -1032,6 +1014,12 @@ export function setupPlayerController(
       (cur === "Strafe_L" || cur === "Strafe_R")
     ) {
       stateMachine.setPlayerState("Run");
+    }
+
+    // 🏆 VICTORY ORBIT CAMERA
+    if (isVictorySequenceActive) {
+      // Rotate camera around the player
+      camera.alpha += 0.01; // Adjust speed as needed
     }
   });
 
@@ -1215,6 +1203,8 @@ export function setupPlayerController(
 
       // CLOSE ZOOM at start (per Image 1)
       camera.radius = 40;
+      camera.alpha = CAMERA_DEFAULTS.alpha;
+      camera.beta = CAMERA_DEFAULTS.beta;
       console.log("📷 Camera target reset and zoomed in (radius: 40)");
 
       // Cancel camera zoom if active
@@ -1245,6 +1235,7 @@ export function setupPlayerController(
     bounceBackActive = false;
     bounceBackTimer = 0;
     invulnerabilityTimer = 0;
+    isVictorySequenceActive = false;
 
     if (stateMachine) stateMachine.setPlayerState("Idle", true);
     setScrollSpeed(0);
@@ -1279,7 +1270,7 @@ export function setupPlayerController(
   const SWIPE_MAX_TIME = 500;
 
   function handleTouchStart(event: TouchEvent) {
-    if (!isGameActive()) return;
+    if (!isGameActive() || isVictorySequenceActive) return;
     const touch = event.touches[0];
     if (!touch) return;
     touchState.startX = touch.clientX; touchState.startY = touch.clientY;
@@ -1287,11 +1278,11 @@ export function setupPlayerController(
   }
 
   function handleTouchMove(event: TouchEvent) {
-    if (!isGameActive() || !touchState.isDragging) return;
+    if (!isGameActive() || !touchState.isDragging || isVictorySequenceActive) return;
   }
 
   function handleTouchEnd(event: TouchEvent) {
-    if (!isGameActive() || !touchState.isDragging) return;
+    if (!isGameActive() || !touchState.isDragging || isVictorySequenceActive) return;
     const touch = event.changedTouches[0];
     if (!touch) return;
     const deltaX = touch.clientX - touchState.startX;
@@ -1314,7 +1305,7 @@ export function setupPlayerController(
   }
 
   function handlePointerDown(event: PointerEvent) {
-    if (!isGameActive()) return;
+    if (!isGameActive() || isVictorySequenceActive) return;
     const canvas = scene.getEngine().getRenderingCanvas();
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -1343,6 +1334,8 @@ export function setupPlayerController(
   function triggerVictorySequence() {
     if (!stateMachine || !playerRoot) return;
     console.log("🏆 Victory Sequence Started!");
+
+    isVictorySequenceActive = true;
 
     // 1. Stop world movement
     setScrollSpeed(0);
@@ -1378,6 +1371,7 @@ export function setupPlayerController(
   return {
     handleKeyDown, handleKeyUp, handleTouchStart, handleTouchMove, handleTouchEnd,
     handlePointerDown, handlePointerUp, startGame, ensureIdle, dispose, reset, triggerCheer, triggerVictorySequence,
+    isVictorySequenceActive: () => isVictorySequenceActive,
     cameraTarget, // Expose the transform node
   };
 }
