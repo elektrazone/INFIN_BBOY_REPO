@@ -83,16 +83,12 @@ module.exports = {
     new CopyWebpackPlugin({
       patterns: [
         {
-          from: path.resolve(__dirname, 'public/scene'),
-          to: 'scene',
-        },
-        {
-          from: path.resolve(__dirname, 'public/intro-screen.png'),
-          to: 'intro-screen.png',
-        },
-        {
-          from: path.resolve(__dirname, 'public/outro2.jpg'),
-          to: 'outro2.jpg',
+          from: path.resolve(__dirname, 'public'),
+          to: '.',
+          filter: (resourcePath) => {
+            // index.html is already handled by HtmlWebpackPlugin
+            return !resourcePath.endsWith('index.html');
+          },
         },
       ],
     }),

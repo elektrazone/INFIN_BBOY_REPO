@@ -26,6 +26,8 @@ export interface PlayerController {
   ensureIdle(): void;
   dispose(): void;
   reset(): void;
+  triggerCheer(): void;
+  triggerVictorySequence(): void;
   cameraTarget?: BABYLON.TransformNode; // Exposed for manual panning
 }
 
@@ -96,6 +98,7 @@ export function setupPlayerController(
   let requestedStart = false;
   let isFirstStart = true; // Track if this is the very first game start
   let introPlaying = false; // Track if intro sequence is active
+  let activeZoomObserver: BABYLON.Observer<BABYLON.Scene> | null = null;
 
   // ------------------------------------------
   // PLAYER ROOT + STATE MACHINE
@@ -393,19 +396,27 @@ export function setupPlayerController(
         const closeEnough = playerRoot.position.y - newBase <= landingSnap;
 
         if (!jumpMotion.active || (descending && closeEnough)) {
-          baseY = newBase;
-          playerRoot.position.y = Math.max(playerRoot.position.y, baseY);
+          // IMPORTANT: If falling in a gap or dead, do NOT clamp to baseY
+          if (isFallingInGap || (stateMachine && (stateMachine.currentState as string) === "Death")) {
+            // Let them fall!
+          } else {
+            // Safety: if we are here, we should NOT be in a "falling in gap" state
+            if (isFallingInGap) isFallingInGap = false;
 
-          if (jumpMotion.active) {
-            jumpMotion.active = false;
-            jumpMotion.velocity = 0;
-            if (!debugOverrideState && stateMachine) {
-              stateMachine.setPlayerState("Run", true);
+            baseY = newBase;
+            playerRoot.position.y = Math.max(playerRoot.position.y, baseY);
+
+            if (jumpMotion.active) {
+              jumpMotion.active = false;
+              jumpMotion.velocity = 0;
+              if (!debugOverrideState && stateMachine) {
+                stateMachine.setPlayerState("Run", true);
+              }
             }
-          }
 
-          isOnPlatform = true;
-          return;
+            isOnPlatform = true;
+            return;
+          }
         }
       }
     }
@@ -479,13 +490,35 @@ export function setupPlayerController(
       isFallingInGap = true;    // Enable physical gravity
       invulnerabilityTimer = INVULNERABILITY_AFTER_HIT;
       stateMachine.setPlayerState("Death", true);
+
+      // FORCE FALL LOGIC - GAME OVER
+      isFallingInGap = true;
+      jumpMotion.active = false;
+      jumpMotion.velocity = -50;
+      invulnerabilityTimer = INVULNERABILITY_AFTER_HIT;
+
+      // Make surrounding cubes fall with the player for dramatic effect
+      if (fallingCubeRoadController && playerRoot) {
+        fallingCubeRoadController.triggerMassFall(playerRoot.position.x, playerRoot.position.z);
+      }
+
       return;
     }
 
+    // NORMAL LIFE LOSS FALL
+    console.log("💔 Player lost a life - falling through floor");
+    isFallingInGap = true; // Always fall on life loss
     jumpMotion.active = false;
-    jumpMotion.velocity = 0;
+    jumpMotion.velocity = -50; // Start falling immediately
     invulnerabilityTimer = INVULNERABILITY_AFTER_HIT;
     stateMachine.setPlayerState("Fall", true);
+
+    // Cancel camera zoom if active
+    if (activeZoomObserver) {
+      scene.onBeforeRenderObservable.remove(activeZoomObserver);
+      activeZoomObserver = null;
+      console.log("🚫 Camera zoom cancelled due to death");
+    }
 
     // ------------------------------------------
     // REPAIR ROAD AROUND PLAYER (Give running room on respawn)
@@ -679,11 +712,7 @@ export function setupPlayerController(
       return;
     }
 
-    // RESTART GAME (R)
-    if (event.code === "KeyR") {
-      restartGame();
-      return;
-    }
+    // R key restart - REMOVED (use UI buttons instead)
 
     // MOVEMENT INPUTS - Only if playing
     if (!isGameActive()) return;
@@ -888,7 +917,9 @@ export function setupPlayerController(
 
     // RECOVERY CHECK: If we were falling in a gap and transitioned to Getup, RESET position
     if (isFallingInGap) {
-      if (stateMachine.currentState === "Getup" || stateMachine.currentState === "Run" || stateMachine.currentState === "Idle") {
+      const cur = stateMachine.currentState;
+      if (cur === "Getup" || cur === "Run" || cur === "Idle" || cur === "Strafe_L" || cur === "Strafe_R") {
+        console.log(`✨ Respawn Recovery: Resetting isFallingInGap from state ${cur}`);
         isFallingInGap = false;
         playerRoot.position.y = baseY;
         jumpMotion.velocity = 0;
@@ -921,13 +952,17 @@ export function setupPlayerController(
     // Use DELTA tracking to allow manual panning to persist
     // IMPORTANT: Only lock camera to player during GAMEPLAY - allow free orbiting during pause/idle
     const currentGameState = useGameStore.getState().gameState;
-    if (cameraTarget && currentGameState === "playing") {
+    if (cameraTarget && (currentGameState === "playing" || currentGameState === "gameover")) {
       const deltaX = playerRoot.position.x - (playerRoot.metadata?.lastX ?? playerRoot.position.x);
       const deltaZ = playerRoot.position.z - (playerRoot.metadata?.lastZ ?? playerRoot.position.z);
       let deltaY = 0;
 
-      if (!isFallingInGap) {
-        // Only follow Y if NOT falling in gap
+      // Follow Y even if falling in gap, BUT with a damping/limit? 
+      // Actually, if it looks like "zooming out" when they die, we should follow them.
+      // For gap falls in gameplay we detatched, but for DEATH we should follow.
+      const shouldFollowY = !isFallingInGap || (currentGameState === "gameover");
+
+      if (shouldFollowY) {
         deltaY = playerRoot.position.y - (playerRoot.metadata?.lastY ?? playerRoot.position.y);
         cameraTarget.position.y += deltaY;
       }
@@ -1017,11 +1052,41 @@ export function setupPlayerController(
   function finishStartGame() {
     gameStarted = true;
     introPlaying = false;
+    isFallingInGap = false; // Safety reset on start/restart
+    jumpMotion.active = false;
+    jumpMotion.velocity = 0;
 
     // Update game state in store
     useGameStore.getState().setGameState('playing');
 
     if (stateMachine) stateMachine.setPlayerState("Run", true);
+
+    // CAMERA ZOOM OUT TRANSITION
+    const startRadius = camera.radius;
+    const endRadius = 71.74; // Standard gameplay radius from cameraDefaults.ts
+    const zoomDuration = 1500; // 1.5 seconds
+    const zoomStartTime = performance.now();
+    // Cancel existing
+    if (activeZoomObserver) {
+      scene.onBeforeRenderObservable.remove(activeZoomObserver);
+      activeZoomObserver = null;
+    }
+
+    activeZoomObserver = scene.onBeforeRenderObservable.add(() => {
+      const elapsed = performance.now() - zoomStartTime;
+      const t = Math.min(1, elapsed / zoomDuration);
+
+      // Ease out cubic
+      const easeT = 1 - Math.pow(1 - t, 3);
+
+      camera.radius = startRadius + (endRadius - startRadius) * easeT;
+
+      if (t >= 1) {
+        if (activeZoomObserver) scene.onBeforeRenderObservable.remove(activeZoomObserver);
+        activeZoomObserver = null;
+        camera.radius = endRadius;
+      }
+    });
   }
 
   /**
@@ -1114,7 +1179,7 @@ export function setupPlayerController(
     stateMachine.playStateWithCallback("Right_turn", () => {
       // Remove rotation observer in case animation ends before rotation
       scene.onBeforeRenderObservable.remove(rotationObserver);
-      playerRoot!.rotation.y = endRotationY; // Ensure final rotation
+      playerRoot!.rotation.y = endRotationY; // Ensure final rotation (Facing AWAY = PI)
       playerRoot!.computeWorldMatrix(true);
       onComplete();
     });
@@ -1140,23 +1205,35 @@ export function setupPlayerController(
     currentLane = 0;
     targetX = 0;
     playerRoot.position.x = 0;
+    playerRoot.rotation.y = 0; // RESET: Face the camera (Diner) at start
 
     // RESET CAMERA TARGET to default framing
     // Always reset to player position with default Y offset (-15) on full reset
     if (cameraTarget) {
       cameraTarget.position.copyFrom(playerRoot.position);
       cameraTarget.position.y -= 15; // Default framing offset
-      console.log("📷 Camera target reset to default position");
+
+      // CLOSE ZOOM at start (per Image 1)
+      camera.radius = 40;
+      console.log("📷 Camera target reset and zoomed in (radius: 40)");
+
+      // Cancel camera zoom if active
+      if (activeZoomObserver) {
+        scene.onBeforeRenderObservable.remove(activeZoomObserver);
+        activeZoomObserver = null;
+      }
     }
     savedYOffset = null; // Clear any saved offset
 
     // FORCE METADATA UPDATE
     // Crucial: Update metadata immediately so next frame's delta is 0
-    playerRoot.metadata = {
-      lastX: playerRoot.position.x,
-      lastY: playerRoot.position.y,
-      lastZ: playerRoot.position.z
-    };
+    if (playerRoot) {
+      playerRoot.metadata = {
+        lastX: playerRoot.position.x,
+        lastY: playerRoot.position.y,
+        lastZ: playerRoot.position.z
+      };
+    }
 
     // Reset state
     gameStarted = false;
@@ -1169,7 +1246,7 @@ export function setupPlayerController(
     bounceBackTimer = 0;
     invulnerabilityTimer = 0;
 
-    stateMachine.setPlayerState("Idle", true);
+    if (stateMachine) stateMachine.setPlayerState("Idle", true);
     setScrollSpeed(0);
 
     console.log("Player controller reset");
@@ -1255,9 +1332,52 @@ export function setupPlayerController(
     keyState.slide = false; keyState.jump = false;
   }
 
+  // Trigger Cheer animation for victory
+  function triggerCheer() {
+    if (!stateMachine) return;
+    console.log("🎉 Playing Cheer animation!");
+    stateMachine.setPlayerState("Cheer", true);
+  }
+
+  // Final Victory Sequence: Stop -> Cheer -> Victory UI
+  function triggerVictorySequence() {
+    if (!stateMachine || !playerRoot) return;
+    console.log("🏆 Victory Sequence Started!");
+
+    // 1. Stop world movement
+    setScrollSpeed(0);
+
+    // 2. Clear any active input/motions
+    jumpMotion.active = false;
+    jumpMotion.velocity = 0;
+    keyState.jump = false;
+    keyState.slide = false;
+
+    // 3. Play Turn animation first, then Cheer, then show UI
+    playTurnWithRotation(() => {
+      console.log("🔄 Turn complete - starting cheer");
+      if (stateMachine) {
+        // Play cheer at 1.0x speed for more impact
+        stateMachine.playStateWithCallback("Cheer", () => {
+          console.log("📽️ Cheer initial loop complete - waiting before showing score");
+          // Cheer loop: 533-622 = 89 frames @ 24fps = 3.7s
+          // We wait for the first loop to finish plus a small buffer
+          setTimeout(() => {
+            console.log("📽️ Victory UI trigger");
+            useGameStore.getState().setGameState('victory');
+          }, 3700); // Wait for approx one full loop (3.7s) before UI
+        }, 1.0);
+      }
+    });
+
+    // 4. Play victory music immediately
+    const audio = getAudioManager();
+    if (audio) audio.playMusic("music_victory", false);
+  }
+
   return {
     handleKeyDown, handleKeyUp, handleTouchStart, handleTouchMove, handleTouchEnd,
-    handlePointerDown, handlePointerUp, startGame, ensureIdle, dispose, reset,
+    handlePointerDown, handlePointerUp, startGame, ensureIdle, dispose, reset, triggerCheer, triggerVictorySequence,
     cameraTarget, // Expose the transform node
   };
 }

@@ -27,7 +27,7 @@ export interface PlayerStateMachineConfig {
 export interface PlayerStateMachine {
   currentState: PlayerState;
   setPlayerState: (next: PlayerState, force?: boolean) => void;
-  playStateWithCallback: (state: PlayerState, onComplete: () => void) => void;
+  playStateWithCallback: (state: PlayerState, onComplete: () => void, speed?: number) => void;
   ensureIdle: () => void;
   pauseAnimation: () => void;
   resumeAnimation: () => void;
@@ -69,7 +69,7 @@ const animationRanges = {
   Fall: { start: 249, end: 324, loop: false, scroll: 0, allowStrafe: false },
   Getup: { start: 325, end: 552, loop: false, scroll: 0, allowStrafe: false },
   Death: { start: 249, end: 324, loop: false, scroll: 0, allowStrafe: false },
-  Cheer: { start: 533, end: 622, loop: false, scroll: 0, allowStrafe: false },
+  Cheer: { start: 533, end: 622, loop: true, scroll: 0, allowStrafe: false },
   Wave: { start: 623, end: 635, loop: false, scroll: 0, allowStrafe: false },
   Right_turn: { start: 636, end: 675, loop: false, scroll: 0, allowStrafe: false },
 };
@@ -177,7 +177,7 @@ export function createPlayerStateMachine(
       // Y" FIX: dopo GETUP torniamo subito a RUN
       else if (next === "Getup") setPlayerState("Run", true);
       else if (next === "Run_Idle") setPlayerState("Idle", true);
-      else if (next === "Cheer" || next === "Wave" || next === "Right_turn") setPlayerState("Run", true);
+      else if (next === "Wave" || next === "Right_turn") setPlayerState("Run", true);
       // Death state does not transition
     };
 
@@ -266,9 +266,9 @@ export function createPlayerStateMachine(
 
   /**
    * Play a state animation and call the callback when it ends.
-   * Used for intro sequences where we need to chain animations.
+   * Used for intro sequences and victory where we need to chain animations.
    */
-  function playStateWithCallback(state: PlayerState, onComplete: () => void) {
+  function playStateWithCallback(state: PlayerState, onComplete: () => void, speed = 1.5) {
     const config = animationRanges[state];
     const targetFrames = resolveFrames(state, config);
 
@@ -283,7 +283,7 @@ export function createPlayerStateMachine(
       const to = targetFrames.end * frameScale;
 
       animationGroup.reset();
-      animationGroup.start(config.loop, 1.5, from, to, false);
+      animationGroup.start(config.loop, speed, from, to, false);
 
       if (!config.loop) {
         animationGroupEndObs =
@@ -295,7 +295,7 @@ export function createPlayerStateMachine(
         // For looping animations, we need a different approach
         // Play one full cycle then call callback
         const durationFrames = to - from;
-        const durationSeconds = durationFrames / (animationGroupFrameRate * 1.5); // 1.5 is speed
+        const durationSeconds = durationFrames / (animationGroupFrameRate * speed); // use passed speed
         setTimeout(() => {
           onComplete();
         }, durationSeconds * 1000);

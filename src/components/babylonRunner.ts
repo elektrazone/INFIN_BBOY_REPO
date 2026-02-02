@@ -245,6 +245,14 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
   });
 
   // --------------------------------------------
+  // VICTORY HANDLING
+  // --------------------------------------------
+  window.addEventListener('matchWon', () => {
+    console.log("🎯 Match Won Event Received!");
+    player.triggerVictorySequence();
+  });
+
+  // --------------------------------------------
   // EVENTS
   // --------------------------------------------
   const onResize = () => applyCanvasSize();

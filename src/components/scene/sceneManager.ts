@@ -244,7 +244,7 @@ export function createSkyDome(scene: BABYLON.Scene, assetBase: string) {
 
     // Slowly rotate the sky dome for dynamic clouds
     scene.onBeforeRenderObservable.add(() => {
-        skyDome.rotation.y += 0.0003 * scene.getAnimationRatio();
+        skyDome.rotation.y += 0.0012 * scene.getAnimationRatio();
     });
 
     return { skyDome, skyMaterial, cloudTexture };

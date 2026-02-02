@@ -314,7 +314,7 @@ export function createObstacleSystem(
     // Spawn Coins
     if (step.coins) {
       for (const coinDef of step.coins) {
-        coinController.spawnCoin(coinDef.laneIndex, coinDef.yOffset || 0, coinDef.count, coinDef.spacing);
+        coinController.spawnCoin(coinDef.laneIndex, coinDef.yOffset || 0, coinDef.count, coinDef.spacing, coinDef.arcHeight);
       }
     }
 

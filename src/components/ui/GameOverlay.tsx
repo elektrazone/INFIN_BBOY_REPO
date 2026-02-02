@@ -4,6 +4,7 @@ import { useGameStore } from '../../store/gameStore';
 import { LoadingScreen } from './LoadingScreen';
 import { CountdownOverlay } from './CountdownOverlay';
 import { OutroScreen } from './OutroScreen';
+import { HeartIcon, HeartEmptyIcon, CoinIcon } from './HudIcons';
 import PerformanceMonitor from './PerformanceMonitor';
 import '../../styles/main.css';
 
@@ -56,18 +57,18 @@ export const GameOverlay: React.FC = () => {
                     <span className="lives-label">Lives:</span>
                     <div className="hearts-container">
                         {Array.from({ length: Math.max(0, lives) }).map((_, index) => (
-                            <span key={index} className="heart">❤️</span>
+                            <HeartIcon key={index} className="hud-icon heart" />
                         ))}
                         {/* Show empty hearts for lost lives */}
                         {Array.from({ length: Math.max(0, 3 - lives) }).map((_, index) => (
-                            <span key={`empty-${index}`} className="empty-heart">🖤</span>
+                            <HeartEmptyIcon key={`empty-${index}`} className="hud-icon empty-heart" />
                         ))}
                     </div>
                 </div>
 
                 {/* Coin Counter - Top Right */}
                 <div className="coin-counter">
-                    <span className="coin-icon">🟡</span>
+                    <CoinIcon className="hud-icon coin-icon" />
                     <span className="coin-count">{coinCount}</span>
                 </div>
             </div>
@@ -75,7 +76,7 @@ export const GameOverlay: React.FC = () => {
             {/* Match Timer Display - Top Center */}
             {isMatchTimerActive && (
                 <div className={`match-timer ${matchTimeRemaining <= 10 ? 'timer-warning' : ''}`}>
-                    ⏱️ {formatTime(matchTimeRemaining)}
+                    <span className="timer-icon">⏱️</span> {formatTime(matchTimeRemaining)}
                 </div>
             )}
 
@@ -96,29 +97,6 @@ export const GameOverlay: React.FC = () => {
                     <div className="gameover-text">
                         {matchTimeRemaining <= 0 ? "TIME'S UP!" : "GAME OVER"}
                     </div>
-                    <div className="gameover-subtext">Press R to restart</div>
-                    <button
-                        className="reset-button"
-                        onClick={() => {
-                            // Hard reload the page
-                            window.location.reload();
-                        }}
-                        style={{
-                            marginTop: '20px',
-                            padding: '8px 16px',
-                            fontSize: '14px',
-                            backgroundColor: 'rgba(255, 50, 50, 0.9)',
-                            color: 'white',
-                            border: '2px solid rgba(255, 255, 255, 0.5)',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            pointerEvents: 'auto',
-                            textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
-                            boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
-                        }}
-                    >
-                        🔄 Restart
-                    </button>
                 </div>
             )}
 

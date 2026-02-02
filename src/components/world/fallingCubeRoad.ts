@@ -75,6 +75,9 @@ export interface FallingCubeRoadController {
     // Repair gap at specific position (for safe respawn)
     fillGapAt(x: number, z: number): void;
 
+    // Trigger all cubes near player to fall (for death scene)
+    triggerMassFall(playerX: number, playerZ: number): void;
+
     // Set callback to check for obstacles
     setObstacleChecker(checker: (x: number, z: number, laneWidth: number) => boolean): void;
 
@@ -792,6 +795,10 @@ export function createFallingCubeRoad(
 
         for (const cube of allCubes) {
             if (cube.state === "fallen") {
+                // PERFORMANCE: skip cubes too far away
+                const distZ = Math.abs(playerZ - cube.instance.position.z);
+                if (distZ > 50) continue;
+
                 // Use the LIVE instance position, not a stored snapshot
                 const dx = Math.abs(playerX - cube.instance.position.x);
                 const dz = Math.abs(playerZ - cube.instance.position.z);
@@ -861,6 +868,45 @@ export function createFallingCubeRoad(
     }
 
     // ----------------------------------------------------------
+    // TRIGGER MASS FALL - Make cubes near player fall (death scene)
+    // ----------------------------------------------------------
+    function triggerMassFall(playerX: number, playerZ: number) {
+        const fallRadius = 80; // Cubes within this radius will fall
+        let triggered = 0;
+
+        for (const cube of allCubes) {
+            if (cube.state !== "active") continue;
+
+            const dx = Math.abs(cube.instance.position.x - playerX);
+            const dz = Math.abs(cube.instance.position.z - playerZ);
+            const distance = Math.sqrt(dx * dx + dz * dz);
+
+            if (distance < fallRadius) {
+                // Stagger the fall based on distance for dramatic effect
+                const delay = distance * 5; // ms delay based on distance
+
+                setTimeout(() => {
+                    if (cube.state === "active") {
+                        cube.state = "falling";
+                        cube.fallVelocity = 0;
+
+                        // Spawn debris for visual effect
+                        spawnDebris(
+                            cube.instance.position.x,
+                            cube.instance.position.y,
+                            cube.instance.position.z
+                        );
+                    }
+                }, delay);
+
+                triggered++;
+            }
+        }
+
+        console.log(`💥 Mass fall triggered! ${triggered} cubes will fall`);
+    }
+
+    // ----------------------------------------------------------
     // DISPOSE
     // ----------------------------------------------------------
     function dispose() {
@@ -898,7 +944,8 @@ export function createFallingCubeRoad(
         isOverGap,
         reset,
         rebuild,
-        fillGapAt, // <--- New API
+        fillGapAt,
+        triggerMassFall,
         setObstacleChecker: (checker) => { obstacleChecker = checker; },
         dispose,
     };

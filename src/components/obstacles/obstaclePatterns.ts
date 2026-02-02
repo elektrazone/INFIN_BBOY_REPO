@@ -11,6 +11,7 @@ export interface CoinDef {
     yOffset?: number;
     count?: number;
     spacing?: number;
+    arcHeight?: number;
 }
 
 export interface PatternStep {
@@ -36,7 +37,7 @@ const PATTERN_VARIETY: ObstaclePattern = [
     // Burger jump center
     {
         obstacles: [{ type: JUMP, laneIndex: 0 }],
-        coins: [{ laneIndex: 0, count: 3, spacing: 8, yOffset: 8 }],
+        coins: [{ laneIndex: 0, count: 5, spacing: 10, yOffset: 8, arcHeight: 12 }],
         delayNext: 1.5
     },
     // Fries wall left
@@ -63,11 +64,11 @@ const PATTERN_VARIETY: ObstaclePattern = [
         coins: [{ laneIndex: -1, yOffset: 15, count: 4, spacing: 10 }],
         delayNext: 2.0
     },
-    // Breathe
+    // Breathe - Arc coins
     {
         obstacles: [],
-        coins: [{ laneIndex: 1, count: 5, spacing: 6 }],
-        delayNext: 1.0
+        coins: [{ laneIndex: 0, count: 7, spacing: 12, arcHeight: 20 }],
+        delayNext: 1.5
     }
 ];
 
@@ -82,7 +83,7 @@ const PATTERN_JUMPS: ObstaclePattern = [
     // Burger center
     {
         obstacles: [{ type: JUMP, laneIndex: 0 }],
-        coins: [{ laneIndex: 0, count: 3, spacing: 8, yOffset: 8 }],
+        coins: [{ laneIndex: 0, count: 5, spacing: 10, yOffset: 8, arcHeight: 15 }],
         delayNext: 1.5
     },
     // Burger right
@@ -100,7 +101,7 @@ const PATTERN_JUMPS: ObstaclePattern = [
     // Breathe
     {
         obstacles: [],
-        coins: [{ laneIndex: 0, count: 5, spacing: 6 }],
+        coins: [{ laneIndex: 0, count: 8, spacing: 10, arcHeight: 25 }],
         delayNext: 1.0
     }
 ];

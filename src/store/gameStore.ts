@@ -111,8 +111,8 @@ const INITIAL_STATE: GameState = {
     isLoading: true,
     showIntroScreen: true,
     countdownValue: null,
-    matchDuration: 90,         // DEFAULT: 1:30 minute (90 seconds)
-    matchTimeRemaining: 90,    // Starts at full duration
+    matchDuration: 90,           // 1:30 minutes
+    matchTimeRemaining: 90,     // Starts at full duration
     isMatchTimerActive: false,
     activePowerUps: [],
 };
@@ -225,11 +225,23 @@ export const useGameStore = create<GameStore>((set) => ({
             if (newTime <= 0) {
                 // Victory if player still has lives, otherwise gameover
                 const isVictory = state.lives > 0;
-                console.log(isVictory ? "🎉 VICTORY! Player survived the match!" : "⏱️ TIME'S UP! Match ended.");
+                console.log(isVictory ? "🎉 VICTORY! Match survivor - triggering sequence" : "⏱️ TIME'S UP! Match ended.");
+
+                if (isVictory) {
+                    // DISPATCH EVENT: matchWon - Player controller will pick this up
+                    // to play the cheer animation BEFORE setting final victory state.
+                    window.dispatchEvent(new CustomEvent('matchWon'));
+                    return {
+                        matchTimeRemaining: 0,
+                        isMatchTimerActive: false,
+                        // We do NOT set gameState to 'victory' yet!
+                    };
+                }
+
                 return {
                     matchTimeRemaining: 0,
                     isMatchTimerActive: false,
-                    gameState: isVictory ? 'victory' : 'gameover',
+                    gameState: 'gameover',
                 };
             }
 

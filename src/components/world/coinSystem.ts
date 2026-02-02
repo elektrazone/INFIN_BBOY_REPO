@@ -19,7 +19,7 @@ export interface CoinInstance {
 }
 
 export interface CoinController {
-    spawnCoin(laneIndex: number, yOffset: number, count?: number, spacing?: number): void;
+    spawnCoin(laneIndex: number, yOffset: number, count?: number, spacing?: number, arcHeight?: number): void;
     update(dt: number, scrollSpeed: number): void;
     checkCollisions(playerAABB: PlayerAABB): number;
     dispose(): void;
@@ -194,7 +194,7 @@ export function createCoinSystem(
         return instance;
     }
 
-    function spawnCoinInternal(laneIndex: number, yOffset: number, count: number = 1, spacing: number = 10) {
+    function spawnCoinInternal(laneIndex: number, yOffset: number, count: number = 1, spacing: number = 10, arcHeight: number = 0) {
         const xPos = laneIndex * laneWidth;
         const baseY = 5;
         const coinCheckRadius = 15; // Radius to check for obstacle collision
@@ -202,6 +202,11 @@ export function createCoinSystem(
         for (let i = 0; i < count; i++) {
             const zOffset = i * spacing;
             const coinZ = spawnZ + zOffset;
+
+            // Arc calculation: y = baseY + yOffset + sin(progress * PI) * arcHeight
+            const progress = count > 1 ? i / (count - 1) : 0;
+            const currentArcY = Math.sin(progress * Math.PI) * arcHeight;
+            const finalY = baseY + yOffset + currentArcY;
 
             // Skip this coin if it would intersect an obstacle
             if (hasObstacleAt && hasObstacleAt(xPos, coinZ, coinCheckRadius)) {
@@ -212,18 +217,18 @@ export function createCoinSystem(
             const coin = acquire();
             if (!coin) continue;
 
-            coin.mesh.position.set(xPos, baseY + yOffset, coinZ);
+            coin.mesh.position.set(xPos, finalY, coinZ);
             activeCoins.push(coin);
         }
     }
 
-    function spawnCoin(laneIndex: number, yOffset: number, count: number = 1, spacing: number = 10) {
+    function spawnCoin(laneIndex: number, yOffset: number, count: number = 1, spacing: number = 10, arcHeight: number = 0) {
         if (!isLoaded) {
             // Queue for later
-            pendingSpawns.push({ laneIndex, yOffset, count, spacing });
+            pendingSpawns.push({ laneIndex, yOffset, count, spacing, arcHeight } as any);
             return;
         }
-        spawnCoinInternal(laneIndex, yOffset, count, spacing);
+        spawnCoinInternal(laneIndex, yOffset, count, spacing, arcHeight);
     }
 
     function update(dt: number, scrollSpeed: number) {
