@@ -70,9 +70,10 @@ export function loadPlayerModel(
       root.scaling = new BABYLON.Vector3(scaleFactor, scaleFactor, scaleFactor);
       root.computeWorldMatrix(true);
 
-      // Rotate 180° (faces camera)
-      root.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.LOCAL);
-      root.computeWorldMatrix(true);
+      // NOTE: 180° rotation moved to intro sequence in playerController.ts
+      // Player now faces camera on load, then rotates during intro
+      // root.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.LOCAL);
+      // root.computeWorldMatrix(true);
 
       // Center pivot + offsets
       const { min: scaledMin, max: scaledMax } =

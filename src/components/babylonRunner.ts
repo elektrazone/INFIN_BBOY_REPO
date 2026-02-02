@@ -17,6 +17,7 @@ import { setupPlayerController } from "./player/playerController";
 import { setupEnvironment } from "./world/environment";
 import { createUIManager } from "./ui/uiManager";
 import { useGameStore } from "../store/gameStore";
+import { initAudioManager, getAudioManager } from "./audio/audioManager";
 
 
 // Draco configuration
@@ -107,6 +108,11 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
   skyDome.isVisible = true;
 
   // --------------------------------------------
+  // AUDIO MANAGER
+  // --------------------------------------------
+  const audioManager = initAudioManager();
+
+  // --------------------------------------------
   // VICTORY CELEBRATION VFX - REMOVED (Static Outro Screen used instead)
   // --------------------------------------------
 
@@ -155,6 +161,9 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
       countdownStarted = true;
       console.log("🎬 User tapped start - beginning countdown");
 
+      // UNLOCK AUDIO - Required for browsers that suspend audio until user interaction
+      audioManager.unlockAudio();
+
       // Start visual countdown sequence: 3, 2, 1, GO!
       const sequence = [3, 2, 1, 0]; // 0 = "GO!"
       let i = 0;
@@ -173,6 +182,10 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
             player.startGame();
             useGameStore.getState().startMatchTimer();
             console.log("⏱️ Match timer started (2 minutes)");
+
+            // Start background music
+            const audio = getAudioManager();
+            if (audio) audio.playMusic("music_theme", true);
           }, 500);
         }
       };
@@ -271,7 +284,7 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
       // Save FOV
       localStorage.setItem("camera_fov", camera.fov.toString());
 
-      // Generate JSON for file download (used by build sync script)
+      // Generate JSON for camera settings
       const cameraSettingsJson = {
         alpha: parseFloat(camera.alpha.toFixed(2)),
         beta: parseFloat(camera.beta.toFixed(2)),
@@ -282,47 +295,35 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
         fov: parseFloat(camera.fov.toFixed(2)),
       };
 
-      // Trigger JSON file download
-      const blob = new Blob([JSON.stringify(cameraSettingsJson, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'camera-settings.json';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      // Generate cameraDefaults.ts code for clipboard
-      const cameraDefaultsCode = `export const CAMERA_DEFAULTS = {
-    alpha: ${camera.alpha.toFixed(2)},
-    beta: ${camera.beta.toFixed(2)},
-    radius: ${camera.radius.toFixed(2)},
-    targetX: ${camera.target.x.toFixed(1)},
-    targetY: ${camera.target.y.toFixed(1)},
-    targetZ: ${camera.target.z.toFixed(1)},
-    fov: ${camera.fov.toFixed(2)},
-};`;
-
-      // Copy to clipboard
-      navigator.clipboard.writeText(cameraDefaultsCode).then(() => {
-        console.log("📋 Camera defaults code copied to clipboard!");
-      }).catch(err => {
-        console.error("Failed to copy to clipboard:", err);
-      });
-
-      const msg = `✅ Camera Saved!
-📁 camera-settings.json downloaded (save to project root)
-📋 Code copied to clipboard
+      // Send to dev server API for automatic saving (no download prompt!)
+      fetch('/api/save-camera', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cameraSettingsJson),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            console.log('✅ Camera settings saved automatically!');
+            const msg = `✅ Camera Saved Automatically!
 
 Alpha: ${camera.alpha.toFixed(2)} rad
 Beta: ${camera.beta.toFixed(2)} rad
 Radius: ${camera.radius.toFixed(2)}
 FOV: ${camera.fov.toFixed(2)} rad (${(camera.fov * 180 / Math.PI).toFixed(1)}°)
 Target: (${camera.target.x.toFixed(1)}, ${camera.target.y.toFixed(1)}, ${camera.target.z.toFixed(1)})`;
+            console.log(msg);
+            alert(msg);
+          } else {
+            console.error('Failed to save:', data.error);
+            alert('Failed to save camera settings: ' + data.error);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to save camera settings:', err);
+          alert('Failed to save camera settings. Is the dev server running?');
+        });
 
-      console.log(msg);
-      alert(msg);
       return; // Don't pass to player controller
     }
 

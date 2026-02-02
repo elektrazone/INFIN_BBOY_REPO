@@ -36,6 +36,23 @@ export function createScene(canvas: HTMLCanvasElement) {
     // Set background color to white
     scene.clearColor = new BABYLON.Color4(1, 1, 1, 1);
 
+    // ==========================================================================
+    // IMAGE PROCESSING - Color vibrancy and saturation
+    // ==========================================================================
+    scene.imageProcessingConfiguration.isEnabled = true;
+    scene.imageProcessingConfiguration.contrast = 1.3;      // Boost contrast
+    scene.imageProcessingConfiguration.exposure = 1.1;      // Slightly brighter
+
+    // Color curves for saturation boost
+    const colorCurves = new BABYLON.ColorCurves();
+    colorCurves.globalSaturation = 40;  // Increase saturation (0 = no change, positive = more saturated)
+    scene.imageProcessingConfiguration.colorCurvesEnabled = true;
+    scene.imageProcessingConfiguration.colorCurves = colorCurves;
+
+    // Tone mapping for richer colors
+    scene.imageProcessingConfiguration.toneMappingEnabled = true;
+    scene.imageProcessingConfiguration.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
+
     return {
         engine,
         scene,

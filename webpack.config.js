@@ -104,5 +104,32 @@ module.exports = {
     compress: true,
     port: 3001,
     open: true,
+    // API endpoint for automatic camera saving
+    setupMiddlewares: (middlewares, devServer) => {
+      const fs = require('fs');
+      const { execSync } = require('child_process');
+
+      devServer.app.use(require('express').json());
+
+      devServer.app.post('/api/save-camera', (req, res) => {
+        const settingsPath = path.join(__dirname, 'camera-settings.json');
+
+        try {
+          // Write the camera settings to file
+          fs.writeFileSync(settingsPath, JSON.stringify(req.body, null, 2), 'utf8');
+          console.log('📷 Camera settings saved to camera-settings.json');
+
+          // Run sync-camera.js to update cameraDefaults.ts
+          execSync('node scripts/sync-camera.js', { cwd: __dirname, stdio: 'inherit' });
+
+          res.json({ success: true, message: 'Camera settings saved and synced!' });
+        } catch (err) {
+          console.error('❌ Failed to save camera settings:', err.message);
+          res.status(500).json({ success: false, error: err.message });
+        }
+      });
+
+      return middlewares;
+    },
   },
 };

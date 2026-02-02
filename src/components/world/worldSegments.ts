@@ -437,12 +437,12 @@ export function createWorldSegments(
   const treeRoots: BABYLON.TransformNode[] = [];
   const treeSpacing = 160;  // OPTIMIZED: Increased from 80 to reduce tree count
   const treeY = 3;         // Raise trees to sit on sidewalk
-  const treeScale = 51;    // Scale factor for the GLB model (39 * 1.3)
+  const treeScale = 9.56;   // Scaled down by another 75% (current: 9.56)
   let treeContainer: BABYLON.AssetContainer | null = null;
 
-  // Position trees on the outer sidewalk edge (Sidewalk starts at ±75, trees at ±100)
-  const leftTreeX = leftSidewalkX - 25; // Outer edge of sidewalk
-  const rightTreeX = rightSidewalkX + 25; // Outer edge of sidewalk
+  // Position trees on the sidewalk near the road (Road ends at ±75, Buildings start at ±90)
+  const leftTreeX = leftSidewalkX + 42;  // Closer to road (approx -83)
+  const rightTreeX = rightSidewalkX - 42; // Closer to road (approx 83)
 
   function createTreeFromGLB(x: number, z: number): BABYLON.TransformNode | null {
     if (!treeContainer) return null;
@@ -506,7 +506,6 @@ export function createWorldSegments(
     console.log(`🌳 Created ${treeRoots.length} trees from GLB`);
   }
 
-  /* 
   // Load tree GLB model
   BABYLON.SceneLoader.LoadAssetContainerAsync("/scene/assets/model/tree.glb", "", scene)
     .then((container) => {
@@ -517,7 +516,6 @@ export function createWorldSegments(
     .catch((err) => {
       console.error("Failed to load tree.glb:", err);
     });
-  */
 
   // ---------------------------------------------
   // YELLOW CENTER LINE MARKERS

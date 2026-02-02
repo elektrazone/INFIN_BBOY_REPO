@@ -11,6 +11,7 @@ import { CoinController } from "../world/coinSystem";
 import { FallingCubeRoadController } from "../world/fallingCubeRoad";
 import { useGameStore } from "../../store/gameStore";
 import { createImpactVFX } from "./impactVFX";
+import { getAudioManager } from "../audio/audioManager";
 export type PlayerAABB = { min: BABYLON.Vector3; max: BABYLON.Vector3 };
 
 export interface PlayerController {
@@ -93,6 +94,8 @@ export function setupPlayerController(
   // ------------------------------------------
   let gameStarted = false;
   let requestedStart = false;
+  let isFirstStart = true; // Track if this is the very first game start
+  let introPlaying = false; // Track if intro sequence is active
 
   // ------------------------------------------
   // PLAYER ROOT + STATE MACHINE
@@ -143,6 +146,10 @@ export function setupPlayerController(
     if (jumpMotion.active) return;
     jumpMotion.active = true;
     jumpMotion.velocity = jumpMotion.jumpStrength;
+
+    // Play jump sound effect
+    const audio = getAudioManager();
+    if (audio) audio.playSFX("sfx_jump");
   }
 
   // ------------------------------------------
@@ -786,6 +793,10 @@ export function setupPlayerController(
 
     if (keyState.slide) {
       stateMachine.setPlayerState("Slide");
+
+      // Play slide sound effect
+      const audio = getAudioManager();
+      if (audio) audio.playSFX("sfx_slide");
       return;
     }
 
@@ -991,12 +1002,122 @@ export function setupPlayerController(
 
   function startGame() {
     requestedStart = true;
+
+    // If first start, play intro sequence
+    if (isFirstStart && stateMachine && playerRoot) {
+      isFirstStart = false;
+      playIntroSequence();
+      return;
+    }
+
+    // Normal start (after intro or on restart)
+    finishStartGame();
+  }
+
+  function finishStartGame() {
     gameStarted = true;
+    introPlaying = false;
 
     // Update game state in store
     useGameStore.getState().setGameState('playing');
 
     if (stateMachine) stateMachine.setPlayerState("Run", true);
+  }
+
+  /**
+   * Play the intro sequence: Idle → Wave (looped) → Right_turn (with 180° rotation) → Run
+   */
+  function playIntroSequence() {
+    if (!stateMachine || !playerRoot) return;
+
+    introPlaying = true;
+    console.log("🎬 Starting intro sequence...");
+
+    // Animation sequence: Idle → Wave x5 (looped for visibility) → Right_turn
+    const sequence: Array<{ state: "Idle" | "Wave" | "Right_turn"; rotate?: boolean }> = [
+      { state: "Idle" },
+      { state: "Wave" },
+      { state: "Wave" },
+      { state: "Wave" },
+      { state: "Wave" },
+      { state: "Wave" },
+      { state: "Right_turn", rotate: true },
+    ];
+
+    let currentIndex = 0;
+
+    const playNext = () => {
+      if (currentIndex >= sequence.length) {
+        // Intro complete - ensure player is facing forward
+        console.log("✅ Intro sequence complete!");
+        finishStartGame();
+        return;
+      }
+
+      const step = sequence[currentIndex];
+      currentIndex++;
+
+      console.log(`🎬 Playing intro step: ${step.state}`);
+
+      if (step.rotate) {
+        // For Right_turn, animate the rotation while playing the animation
+        playTurnWithRotation(playNext);
+      } else {
+        stateMachine!.playStateWithCallback(step.state, playNext);
+      }
+    };
+
+    // Start the sequence
+    playNext();
+  }
+
+  /**
+   * Play the Right_turn animation while animating the player's Y rotation by 180°
+   */
+  function playTurnWithRotation(onComplete: () => void) {
+    if (!stateMachine || !playerRoot) {
+      onComplete();
+      return;
+    }
+
+    const startRotationY = playerRoot.rotation.y;
+    const endRotationY = startRotationY + Math.PI; // 180 degrees
+
+    // Get the animation duration (Right_turn: 636-675 = 39 frames at 24fps = ~1.625s)
+    // But with 1.5x speed = ~1.08s
+    const durationMs = 1100; // Slightly longer to ensure smooth completion
+    const startTime = performance.now();
+
+    // Start the rotation animation using the render loop
+    const rotationObserver = scene.onBeforeRenderObservable.add(() => {
+      if (!playerRoot) return;
+
+      const elapsed = performance.now() - startTime;
+      const t = Math.min(1, elapsed / durationMs);
+
+      // Ease-in-out for smooth rotation
+      const easeT = t < 0.5
+        ? 2 * t * t
+        : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+      playerRoot.rotation.y = startRotationY + (endRotationY - startRotationY) * easeT;
+
+      if (t >= 1) {
+        // Rotation complete
+        scene.onBeforeRenderObservable.remove(rotationObserver);
+        playerRoot.rotation.y = endRotationY; // Ensure exact final rotation
+        playerRoot.computeWorldMatrix(true);
+      }
+    });
+
+    // Play the animation and call callback when done
+    stateMachine.playStateWithCallback("Right_turn", () => {
+      // Remove rotation observer in case animation ends before rotation
+      scene.onBeforeRenderObservable.remove(rotationObserver);
+      playerRoot!.rotation.y = endRotationY; // Ensure final rotation
+      playerRoot!.computeWorldMatrix(true);
+      onComplete();
+    });
   }
 
   function ensureIdle() {

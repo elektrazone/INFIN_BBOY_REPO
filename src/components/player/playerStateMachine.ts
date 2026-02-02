@@ -11,7 +11,10 @@ export type PlayerState =
   | "Fall"
   | "Getup"
   | "Run_Idle"
-  | "Death";
+  | "Death"
+  | "Cheer"
+  | "Wave"
+  | "Right_turn";
 
 export interface PlayerStateMachineConfig {
   scene: BABYLON.Scene;
@@ -24,6 +27,7 @@ export interface PlayerStateMachineConfig {
 export interface PlayerStateMachine {
   currentState: PlayerState;
   setPlayerState: (next: PlayerState, force?: boolean) => void;
+  playStateWithCallback: (state: PlayerState, onComplete: () => void) => void;
   ensureIdle: () => void;
   pauseAnimation: () => void;
   resumeAnimation: () => void;
@@ -65,6 +69,9 @@ const animationRanges = {
   Fall: { start: 249, end: 324, loop: false, scroll: 0, allowStrafe: false },
   Getup: { start: 325, end: 552, loop: false, scroll: 0, allowStrafe: false },
   Death: { start: 249, end: 324, loop: false, scroll: 0, allowStrafe: false },
+  Cheer: { start: 533, end: 622, loop: false, scroll: 0, allowStrafe: false },
+  Wave: { start: 623, end: 635, loop: false, scroll: 0, allowStrafe: false },
+  Right_turn: { start: 636, end: 675, loop: false, scroll: 0, allowStrafe: false },
 };
 
 const blockingStates = new Set<PlayerState>([
@@ -73,6 +80,9 @@ const blockingStates = new Set<PlayerState>([
   "Fall",
   "Getup",
   "Death",
+  "Cheer",
+  "Wave",
+  "Right_turn",
 ]);
 
 export function createPlayerStateMachine(
@@ -167,6 +177,7 @@ export function createPlayerStateMachine(
       // Y" FIX: dopo GETUP torniamo subito a RUN
       else if (next === "Getup") setPlayerState("Run", true);
       else if (next === "Run_Idle") setPlayerState("Idle", true);
+      else if (next === "Cheer" || next === "Wave" || next === "Right_turn") setPlayerState("Run", true);
       // Death state does not transition
     };
 
@@ -253,6 +264,70 @@ export function createPlayerStateMachine(
     }
   }
 
+  /**
+   * Play a state animation and call the callback when it ends.
+   * Used for intro sequences where we need to chain animations.
+   */
+  function playStateWithCallback(state: PlayerState, onComplete: () => void) {
+    const config = animationRanges[state];
+    const targetFrames = resolveFrames(state, config);
+
+    stopCurrentAnimation();
+    setScrollSpeed(config.scroll);
+
+    currentPlayerState = state;
+
+    if (animationGroup) {
+      const frameScale = animationGroupFrameRate / sourceFrameRate;
+      const from = targetFrames.start * frameScale;
+      const to = targetFrames.end * frameScale;
+
+      animationGroup.reset();
+      animationGroup.start(config.loop, 1.5, from, to, false);
+
+      if (!config.loop) {
+        animationGroupEndObs =
+          animationGroup.onAnimationGroupEndObservable.addOnce(() => {
+            animationGroupEndObs = null;
+            onComplete();
+          });
+      } else {
+        // For looping animations, we need a different approach
+        // Play one full cycle then call callback
+        const durationFrames = to - from;
+        const durationSeconds = durationFrames / (animationGroupFrameRate * 1.5); // 1.5 is speed
+        setTimeout(() => {
+          onComplete();
+        }, durationSeconds * 1000);
+      }
+    } else if (playerSkeleton) {
+      playerAnimatable = scene.beginAnimation(
+        playerSkeleton,
+        targetFrames.start,
+        targetFrames.end,
+        config.loop,
+        1
+      );
+
+      if (playerAnimatable) {
+        if (!config.loop) {
+          animatableEndObs =
+            playerAnimatable.onAnimationEndObservable.addOnce(() => {
+              animatableEndObs = null;
+              onComplete();
+            });
+        } else {
+          // For looping, use timeout
+          const durationFrames = targetFrames.end - targetFrames.start;
+          const durationSeconds = durationFrames / sourceFrameRate;
+          setTimeout(() => {
+            onComplete();
+          }, durationSeconds * 1000);
+        }
+      }
+    }
+  }
+
   function dispose() {
     stopCurrentAnimation();
   }
@@ -289,6 +364,7 @@ export function createPlayerStateMachine(
       return (cfg as any).allowStrafe !== false;
     },
     setPlayerState,
+    playStateWithCallback,
     setAllowAirStrafe: (allow: boolean) => {
       allowAirStrafe = allow;
     },

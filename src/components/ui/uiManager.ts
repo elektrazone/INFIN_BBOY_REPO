@@ -1,5 +1,6 @@
 // src/components/ui/uiManager.ts
 import { useGameStore } from '../../store/gameStore';
+import { getAudioManager } from '../audio/audioManager';
 
 export interface UIManager {
     updateCoinCount(count: number): void;
@@ -21,9 +22,13 @@ export function createUIManager(): UIManager {
     // Listen for custom event from playerController
     const onCoinCollected = (e: Event) => {
         const customEvent = e as CustomEvent;
-        const added = customEvent.detail.count;
+        const added = customEvent.detail.count * 10; // Coin value set to 10
         const newCount = currentCount + added;
         updateCoinCount(newCount);
+
+        // Play coin sound effect
+        const audio = getAudioManager();
+        if (audio) audio.playSFX("sfx_coin");
     };
 
     window.addEventListener("coinCollected", onCoinCollected);
