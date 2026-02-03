@@ -36,7 +36,7 @@ export function createCoinSystem(
 ): CoinController {
     const spawnZ = options.spawnZ ?? -520;
     const despawnZ = options.despawnZ ?? 200;
-    const laneWidth = options.laneWidth ?? 25;
+    const laneWidth = options.laneWidth ?? 30; // Adjusted from 25 to match 9-column cube road (centered on column 2, 4, 6)
 
     const root = new BABYLON.TransformNode("coins_root", scene);
     const coinPool: CoinInstance[] = [];

@@ -108,7 +108,8 @@ module.exports = {
       devServer.app.use(require('express').json());
 
       devServer.app.post('/api/save-camera', (req, res) => {
-        const settingsPath = path.join(__dirname, 'camera-settings.json');
+        const filename = req.body.filename || 'camera-settings.json';
+        const settingsPath = path.join(__dirname, filename);
 
         try {
           // Write the camera settings to file

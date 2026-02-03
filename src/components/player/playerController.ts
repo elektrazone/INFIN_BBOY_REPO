@@ -12,7 +12,7 @@ import { FallingCubeRoadController } from "../world/fallingCubeRoad";
 import { useGameStore } from "../../store/gameStore";
 import { createImpactVFX } from "./impactVFX";
 import { getAudioManager } from "../audio/audioManager";
-import { CAMERA_DEFAULTS } from "../../config/cameraDefaults";
+import { CAMERA_DEFAULTS, INTRO_CAMERA_DEFAULTS } from "../../config/cameraDefaults";
 export type PlayerAABB = { min: BABYLON.Vector3; max: BABYLON.Vector3 };
 
 export interface PlayerController {
@@ -87,7 +87,7 @@ export function setupPlayerController(
   // ------------------------------------------
   // LANE SYSTEM CONFIG
   // ------------------------------------------
-  const laneWidth = 25;
+  const laneWidth = 30; // Adjusted from 25 to match 9-column cube centers (-30, 0, 30)
   const maxLane = 1;
   let currentLane = 0;
   let targetX = 0;
@@ -612,10 +612,10 @@ export function setupPlayerController(
       camera.lockedTarget = cameraTarget;
 
       // Sync initial position (with saved or default framing offset)
-      // If we have a saved target, use it relative to the player's starting Z/X
-      const savedTargetX = localStorage.getItem("camera_target_x");
-      const savedTargetY = localStorage.getItem("camera_target_y");
-      const savedTargetZ = localStorage.getItem("camera_target_z");
+      // If we have a saved intro target, use it, otherwise fallback to defaults
+      const savedTargetX = localStorage.getItem("camera_target_x_intro") || localStorage.getItem("camera_target_x");
+      const savedTargetY = localStorage.getItem("camera_target_y_intro") || localStorage.getItem("camera_target_y");
+      const savedTargetZ = localStorage.getItem("camera_target_z_intro") || localStorage.getItem("camera_target_z");
 
       if (savedTargetX !== null && savedTargetY !== null && savedTargetZ !== null) {
         cameraTarget.position.set(
@@ -623,14 +623,12 @@ export function setupPlayerController(
           parseFloat(savedTargetY),
           parseFloat(savedTargetZ)
         );
-        console.log("📷 Camera target initialized from LocalStorage");
+        console.log("📷 Camera target initialized from LocalStorage (Intro/Standard)");
       } else {
-        // Fallback to default framing: Sync initial position (with framing offset)
-        cameraTarget.position.copyFrom(playerRoot.position);
-        // User request: "Move the camera position down" -> Move TARGET DOWN to shift view UP.
-        // -15 units provides more space below to see falling cubes.
-        cameraTarget.position.y -= 15;
-        console.log("📷 Camera target initialized with default offset (-15)");
+        // Fallback to INTRO_CAMERA_DEFAULTS if available, else CAMERA_DEFAULTS
+        const defaultTarget = (INTRO_CAMERA_DEFAULTS as any) || CAMERA_DEFAULTS;
+        cameraTarget.position.set(defaultTarget.targetX, defaultTarget.targetY, defaultTarget.targetZ);
+        console.log("📷 Camera target initialized with defaults");
       }
 
       const { min: worldMin, max: worldMax } =
@@ -661,7 +659,7 @@ export function setupPlayerController(
         setScrollSpeed,
       });
 
-      ensureIdle();
+      reset();
 
       if (requestedStart) startGame();
 
@@ -1016,11 +1014,7 @@ export function setupPlayerController(
       stateMachine.setPlayerState("Run");
     }
 
-    // 🏆 VICTORY ORBIT CAMERA
-    if (isVictorySequenceActive) {
-      // Rotate camera around the player
-      camera.alpha += 0.01; // Adjust speed as needed
-    }
+    // 🏆 VICTORY ORBIT CAMERA - REMOVED (User request)
   });
 
   function startGame() {
@@ -1046,12 +1040,27 @@ export function setupPlayerController(
 
     // Update game state in store
     useGameStore.getState().setGameState('playing');
-
     if (stateMachine) stateMachine.setPlayerState("Run", true);
 
     // CAMERA ZOOM OUT TRANSITION
     const startRadius = camera.radius;
-    const endRadius = 71.74; // Standard gameplay radius from cameraDefaults.ts
+    const startAlpha = camera.alpha;
+    const startBeta = camera.beta;
+    const startFov = camera.fov;
+
+    // Get Gameplay (End) values from localStorage or defaults (Shift+C)
+    const endAlpha = parseFloat(localStorage.getItem("camera_alpha") || CAMERA_DEFAULTS.alpha.toString());
+    const endBeta = parseFloat(localStorage.getItem("camera_beta") || CAMERA_DEFAULTS.beta.toString());
+    const endRadius = parseFloat(localStorage.getItem("camera_radius") || CAMERA_DEFAULTS.radius.toString());
+    const endTargetX = parseFloat(localStorage.getItem("camera_target_x") || CAMERA_DEFAULTS.targetX.toString());
+    const endTargetY = parseFloat(localStorage.getItem("camera_target_y") || CAMERA_DEFAULTS.targetY.toString());
+    const endTargetZ = parseFloat(localStorage.getItem("camera_target_z") || CAMERA_DEFAULTS.targetZ.toString());
+    const endFov = parseFloat(localStorage.getItem("camera_fov") || CAMERA_DEFAULTS.fov.toString());
+
+    console.log(`🎬 Starting Camera Transition:
+      From: Radius ${startRadius.toFixed(2)}, Alpha ${startAlpha.toFixed(2)}, Beta ${startBeta.toFixed(2)}, FOV ${startFov.toFixed(2)}
+      To:   Radius ${endRadius.toFixed(2)}, Alpha ${endAlpha.toFixed(2)}, Beta ${endBeta.toFixed(2)}, FOV ${endFov.toFixed(2)}`);
+
     const zoomDuration = 1500; // 1.5 seconds
     const zoomStartTime = performance.now();
     // Cancel existing
@@ -1068,11 +1077,25 @@ export function setupPlayerController(
       const easeT = 1 - Math.pow(1 - t, 3);
 
       camera.radius = startRadius + (endRadius - startRadius) * easeT;
+      camera.alpha = startAlpha + (endAlpha - startAlpha) * easeT;
+      camera.beta = startBeta + (endBeta - startBeta) * easeT;
+      camera.fov = startFov + (endFov - startFov) * easeT;
+
+      if (cameraTarget) {
+        cameraTarget.position.x = BABYLON.Scalar.Lerp(cameraTarget.position.x, endTargetX, easeT);
+        cameraTarget.position.y = BABYLON.Scalar.Lerp(cameraTarget.position.y, endTargetY, easeT);
+        cameraTarget.position.z = BABYLON.Scalar.Lerp(cameraTarget.position.z, endTargetZ, easeT);
+      }
 
       if (t >= 1) {
         if (activeZoomObserver) scene.onBeforeRenderObservable.remove(activeZoomObserver);
         activeZoomObserver = null;
         camera.radius = endRadius;
+        camera.alpha = endAlpha;
+        camera.beta = endBeta;
+        camera.fov = endFov;
+        if (cameraTarget) cameraTarget.position.set(endTargetX, endTargetY, endTargetZ);
+        console.log("✅ Camera Transition Complete");
       }
     });
   }
@@ -1198,14 +1221,24 @@ export function setupPlayerController(
     // RESET CAMERA TARGET to default framing
     // Always reset to player position with default Y offset (-15) on full reset
     if (cameraTarget) {
-      cameraTarget.position.copyFrom(playerRoot.position);
-      cameraTarget.position.y -= 15; // Default framing offset
+      // Use saved intro settings if available, else defaults
+      const introAlpha = parseFloat(localStorage.getItem("camera_alpha_intro") || (INTRO_CAMERA_DEFAULTS as any)?.alpha || CAMERA_DEFAULTS.alpha.toString());
+      const introBeta = parseFloat(localStorage.getItem("camera_beta_intro") || (INTRO_CAMERA_DEFAULTS as any)?.beta || CAMERA_DEFAULTS.beta.toString());
+      // Default intro radius should be CLOSER than gameplay (e.g. 50%) to ensure zoom-OUT
+      const introRadius = parseFloat(localStorage.getItem("camera_radius_intro") || (INTRO_CAMERA_DEFAULTS as any)?.radius || (CAMERA_DEFAULTS.radius * 0.5).toString());
+      const introTargetX = parseFloat(localStorage.getItem("camera_target_x_intro") || (INTRO_CAMERA_DEFAULTS as any)?.targetX || playerRoot.position.x.toString());
+      const introTargetY = parseFloat(localStorage.getItem("camera_target_y_intro") || (INTRO_CAMERA_DEFAULTS as any)?.targetY || (playerRoot.position.y - 15).toString());
+      const introTargetZ = parseFloat(localStorage.getItem("camera_target_z_intro") || (INTRO_CAMERA_DEFAULTS as any)?.targetZ || playerRoot.position.z.toString());
+      const introFov = parseFloat(localStorage.getItem("camera_fov_intro") || (INTRO_CAMERA_DEFAULTS as any)?.fov || (CAMERA_DEFAULTS as any)?.fov || "1.5");
 
-      // CLOSE ZOOM at start (per Image 1)
-      camera.radius = 40;
-      camera.alpha = CAMERA_DEFAULTS.alpha;
-      camera.beta = CAMERA_DEFAULTS.beta;
-      console.log("📷 Camera target reset and zoomed in (radius: 40)");
+      cameraTarget.position.set(introTargetX, introTargetY, introTargetZ);
+
+      // Apply Intro Zoom
+      camera.radius = introRadius;
+      camera.alpha = introAlpha;
+      camera.beta = introBeta;
+      camera.fov = introFov;
+      console.log(`📷 Camera target reset and zoomed in (radius: ${introRadius})`);
 
       // Cancel camera zoom if active
       if (activeZoomObserver) {

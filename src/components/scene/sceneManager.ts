@@ -179,8 +179,12 @@ export function createCamera(
     camera.keysLeft = [];
     camera.keysRight = [];
 
-    camera.lowerRadiusLimit = 20;
+    camera.lowerRadiusLimit = 1;
     camera.upperRadiusLimit = 200;
+
+    // DISABLE CAMERA COLLISION (to prevent "push back" when hitting objects)
+    camera.checkCollisions = false;
+    camera.collisionRadius = new BABYLON.Vector3(0, 0, 0);
 
     // Enable Panning
     camera.panningSensibility = 50; // Lower is faster

@@ -8,12 +8,12 @@ import { getLayeredRoadMaterial } from "../materials/MaterialFactory";
 // ============================================================
 const CONFIG = {
     // Grid dimensions - OPTIMIZED: Fewer, larger cubes
-    cubesWide: 10,   // Reduced from 14 (10 * 15 = 150 units wide)
+    cubesWide: 9,   // Reduced from 10 to ensure a centered column exists (for centered holes)
     cubesLong: 56,   // Reduced from 84 (56 * 15 = 840 units long)
     cubeSize: 15,    // Larger cubes (was 12)
 
     // Extra cubes at start to fill gap near buildings
-    extraStartRows: 4, // Reduced from 6
+    extraStartRows: 2, // Reduced to 2 to move crumble edge closer per user request
 
     // Total road dimensions
     get roadWidth() { return this.cubesWide * this.cubeSize; },
@@ -569,7 +569,7 @@ export function createFallingCubeRoad(
             // ----------------------------------------------------------
 
             // Thresholds
-            const rearFallZ = CONFIG.cubeSize * 2; // Fall further behind player (was 0.5)
+            const rearFallZ = CONFIG.cubeSize * 1; // Fall closer behind player per user request (was 2)
             // Limit to ~3 rows falling behind the player before recycling
             const recycleZ = CONFIG.cubeSize * 5;
 

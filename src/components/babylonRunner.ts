@@ -245,14 +245,6 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
   });
 
   // --------------------------------------------
-  // VICTORY HANDLING
-  // --------------------------------------------
-  window.addEventListener('matchWon', () => {
-    console.log("🎯 Match Won Event Received!");
-    player.triggerVictorySequence();
-  });
-
-  // --------------------------------------------
   // EVENTS
   // --------------------------------------------
   const onResize = () => applyCanvasSize();
@@ -273,24 +265,53 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
   window.addEventListener("keydown", (ev) => {
     keysPressed[ev.key] = true;
 
-    // Camera Capture Hotkey (Shift + C) - Check FIRST before player input
-    if (ev.shiftKey && ev.code === "KeyC") {
+    // Camera Capture Hotkey (Shift + C) - Gameplay
+    // Camera Capture Hotkey (Shift + B) - Intro
+    const isShiftC = ev.shiftKey && ev.code === "KeyC";
+    const isShiftB = ev.shiftKey && ev.code === "KeyB";
+    const isShiftR = ev.shiftKey && ev.code === "KeyR";
+
+    if (isShiftR) {
       ev.preventDefault();
       ev.stopPropagation();
-      console.log("📸 CAMERA CAPTURE (Saving to LocalStorage)...");
+
+      console.log("🔄 Resetting camera to file defaults (clearing localStorage)...");
+
+      const keysToRemove = [
+        "camera_alpha", "camera_beta", "camera_radius",
+        "camera_target_x", "camera_target_y", "camera_target_z", "camera_fov",
+        "camera_alpha_intro", "camera_beta_intro", "camera_radius_intro",
+        "camera_target_x_intro", "camera_target_y_intro", "camera_target_z_intro", "camera_fov_intro"
+      ];
+
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+
+      alert("✅ Camera overrides cleared! Refresh or tap start to see file defaults.");
+      return;
+    }
+
+    if (isShiftC || isShiftB) {
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      const type = isShiftC ? "GAMEPLAY" : "INTRO";
+      const suffix = isShiftC ? "" : "_intro";
+      const filename = isShiftC ? "camera-settings.json" : "camera-intro-settings.json";
+
+      console.log(`📸 ${type} CAMERA CAPTURE (Saving to LocalStorage & ${filename})...`);
 
       // Save Orbit details
-      localStorage.setItem("camera_alpha", camera.alpha.toString());
-      localStorage.setItem("camera_beta", camera.beta.toString());
-      localStorage.setItem("camera_radius", camera.radius.toString());
+      localStorage.setItem(`camera_alpha${suffix}`, camera.alpha.toString());
+      localStorage.setItem(`camera_beta${suffix}`, camera.beta.toString());
+      localStorage.setItem(`camera_radius${suffix}`, camera.radius.toString());
 
       // Also save target position for panning
-      localStorage.setItem("camera_target_x", camera.target.x.toString());
-      localStorage.setItem("camera_target_y", camera.target.y.toString());
-      localStorage.setItem("camera_target_z", camera.target.z.toString());
+      localStorage.setItem(`camera_target_x${suffix}`, camera.target.x.toString());
+      localStorage.setItem(`camera_target_y${suffix}`, camera.target.y.toString());
+      localStorage.setItem(`camera_target_z${suffix}`, camera.target.z.toString());
 
       // Save FOV
-      localStorage.setItem("camera_fov", camera.fov.toString());
+      localStorage.setItem(`camera_fov${suffix}`, camera.fov.toString());
 
       // Generate JSON for camera settings
       const cameraSettingsJson = {
@@ -301,6 +322,7 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
         targetY: parseFloat(camera.target.y.toFixed(1)),
         targetZ: parseFloat(camera.target.z.toFixed(1)),
         fov: parseFloat(camera.fov.toFixed(2)),
+        filename: filename
       };
 
       // Send to dev server API for automatic saving (no download prompt!)
@@ -312,8 +334,8 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            console.log('✅ Camera settings saved automatically!');
-            const msg = `✅ Camera Saved Automatically!
+            console.log(`✅ ${type} Camera settings saved automatically!`);
+            const msg = `✅ ${type} Camera Saved Automatically!
 
 Alpha: ${camera.alpha.toFixed(2)} rad
 Beta: ${camera.beta.toFixed(2)} rad

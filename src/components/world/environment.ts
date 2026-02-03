@@ -85,7 +85,7 @@ export function setupEnvironment(
     getScrollSpeed,
     coinController,
     {
-      laneWidth: 25,
+      laneWidth: 30, // Adjusted from 25 to match 9-column cube road centers
       laneCount: 3,
     },
     onObstaclesReady

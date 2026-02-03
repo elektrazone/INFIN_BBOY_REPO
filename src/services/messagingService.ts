@@ -74,9 +74,12 @@ export class MessagingService {
         switch (type) {
             case 'RESTART_GAME':
                 console.log('✉️ Command received: Restarting game');
-                useGameStore.getState().resetGame();
-                // Optionally trigger a page reload if a clean state is preferred
-                // window.location.reload();
+                window.location.reload();
+                break;
+
+            case 'START_GAME':
+                console.log('✉️ Command received: Starting game');
+                useGameStore.getState().dismissIntroScreen();
                 break;
 
             case 'CLOSE_GAME':

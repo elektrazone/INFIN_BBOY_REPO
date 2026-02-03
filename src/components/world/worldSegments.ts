@@ -32,7 +32,7 @@ export function createWorldSegments(
 ): WorldSegments {
   // CONFIG
   const targetSegmentCount = 2; // OPTIMIZED: Reduced from 4 to reduce draw calls
-  const groundWidth = 350;   // Widened to add sidewalk space for parked cars
+  const groundWidth = 335;   // Adjusted from 350 (135 road + 200 sidewalks)
   const groundLength = 160;
   const environmentScale = 8;
 
@@ -336,10 +336,10 @@ export function createWorldSegments(
   sidewalkMat.metallic = 0.0;
   sidewalkMat.freeze(); // Freeze material for performance
 
-  // Road is 150 units wide centered at 0. Sidewalks go from road edge outward.
-  const roadHalfWidth = 75; // Match actual road width (150/2)
-  const leftSidewalkX = -roadHalfWidth - sidewalkWidth / 2;
-  const rightSidewalkX = roadHalfWidth + sidewalkWidth / 2;
+  // Road is 135 units wide centered at 0 (9 cubes * 15 size). Sidewalks go from road edge outward.
+  const roadHalfWidth = 67.5; // Match actual road width (135/2)
+  const leftSidewalkX = -67.5 - 50; // roadHalfWidth + sidewalkWidth/2
+  const rightSidewalkX = 67.5 + 50;
 
   function createSidewalks() {
     const segmentCount = 4; // Extended to cover full road horizon
@@ -380,7 +380,7 @@ export function createWorldSegments(
   // A simple static plane that extends the road visually beyond the falling cubes
   // without adding complex geometry. Much lighter than adding more falling cubes.
   function createRoadExtension() {
-    const roadWidth = 150;  // Match falling cube road width
+    const roadWidth = 135;  // Adjusted from 150 to match falling cube road width
     const extensionLength = 3000; // Long enough to cover horizon
     const startZ = -1050; // Start where falling cube road ends (approx)
 

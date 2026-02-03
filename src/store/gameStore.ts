@@ -229,13 +229,10 @@ export const useGameStore = create<GameStore>((set) => ({
                 console.log(isVictory ? "🎉 VICTORY! Match survivor - triggering sequence" : "⏱️ TIME'S UP! Match ended.");
 
                 if (isVictory) {
-                    // DISPATCH EVENT: matchWon - Player controller will pick this up
-                    // to play the cheer animation BEFORE setting final victory state.
-                    window.dispatchEvent(new CustomEvent('matchWon'));
                     return {
                         matchTimeRemaining: 0,
                         isMatchTimerActive: false,
-                        // We do NOT set gameState to 'victory' yet!
+                        gameState: 'victory',
                     };
                 }
 
