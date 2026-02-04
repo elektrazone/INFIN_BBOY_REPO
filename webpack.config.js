@@ -108,20 +108,26 @@ module.exports = {
       devServer.app.use(require('express').json());
 
       devServer.app.post('/api/save-camera', (req, res) => {
-        const filename = req.body.filename || 'camera-settings.json';
+        const body = req.body;
+        const filename = body.filename || 'camera-settings.json';
         const settingsPath = path.join(__dirname, filename);
+
+        console.log(`✉️ RECEIVED SAVE REQUEST: ${filename}`);
+        if (!body.alpha && !body.radius) {
+          console.warn('⚠️ WARNING: Received empty or malformed camera body!', body);
+        }
 
         try {
           // Write the camera settings to file
-          fs.writeFileSync(settingsPath, JSON.stringify(req.body, null, 2), 'utf8');
-          console.log('📷 Camera settings saved to camera-settings.json');
+          fs.writeFileSync(settingsPath, JSON.stringify(body, null, 2), 'utf8');
+          console.log(`✅ Camera settings saved to ${filename}`);
 
           // Run sync-camera.js to update cameraDefaults.ts
           execSync('node scripts/sync-camera.js', { cwd: __dirname, stdio: 'inherit' });
 
-          res.json({ success: true, message: 'Camera settings saved and synced!' });
+          res.json({ success: true, message: `Camera settings saved as ${filename}` });
         } catch (err) {
-          console.error('❌ Failed to save camera settings:', err.message);
+          console.error(`❌ Failed to save camera settings and sync:`, err.message);
           res.status(500).json({ success: false, error: err.message });
         }
       });

@@ -74,7 +74,10 @@ function main() {
 
     try {
         fs.writeFileSync(DEFAULTS_FILE, newContent, 'utf8');
-        console.log('✅ Updated cameraDefaults.ts successfully');
+        console.log(`✅ Updated cameraDefaults.ts:`);
+        if (gameplaySettings) console.log(`   - Gameplay: ${SETTINGS_FILE}`);
+        if (introSettings) console.log(`   - Intro: ${INTRO_SETTINGS_FILE}`);
+        else if (gameplaySettings) console.log(`   - Intro: FALLBACK to Gameplay`);
     } catch (err) {
         console.error('❌ Failed to write cameraDefaults.ts:', err.message);
         process.exit(1);
