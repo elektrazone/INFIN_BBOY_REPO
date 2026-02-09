@@ -51,8 +51,8 @@ export const GameOverlay: React.FC = () => {
             {process.env.NODE_ENV === 'development' && <PerformanceMonitor />}
             {/* Countdown Overlay */}
             <CountdownOverlay />
-            <div className="top-hud">
-                {/* Lives Counter - Top Left */}
+            <div className="left-hud-stack">
+                {/* Lives Counter */}
                 <div className="lives-container">
                     <span className="lives-label">Lives:</span>
                     <div className="hearts-container">
@@ -66,17 +66,17 @@ export const GameOverlay: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Coin Counter - Top Right */}
+                {/* Coin Counter */}
                 <div className="coin-counter">
                     <CoinIcon className="hud-icon coin-icon" />
                     <span className="coin-count">{coinCount}</span>
                 </div>
             </div>
 
-            {/* Match Timer Display - Top Center */}
+            {/* Match Timer Display - Moved to right via CSS */}
             {isMatchTimerActive && (
                 <div className={`match-timer ${matchTimeRemaining <= 10 ? 'timer-warning' : ''}`}>
-                    <span className="timer-icon">⏱️</span> {formatTime(matchTimeRemaining)}
+                    {formatTime(matchTimeRemaining)}
                 </div>
             )}
 

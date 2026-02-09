@@ -216,7 +216,7 @@ export function createObstacleSystem(
     const total = Math.max(1, store.matchDuration);
     const elapsed = total - store.matchTimeRemaining;
     const progress = Math.min(1.0, elapsed / total);
-    return 1.0 + (progress * 0.5); // 1.0 to 1.5
+    return 1.0 + (progress * 1.0); // 1.0 to 2.0
   };
 
   let spawnTimer = 1.0;

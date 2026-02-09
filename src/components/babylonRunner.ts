@@ -128,9 +128,9 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
     const total = Math.max(1, store.matchDuration);
     const elapsed = total - store.matchTimeRemaining;
 
-    // Linearly scale from 1.0 to 1.5 over the match duration
+    // Linearly scale from 1.0 to 2.0 over the match duration
     const progress = Math.min(1.0, elapsed / total);
-    return 1.0 + (progress * 0.5);
+    return 1.0 + (progress * 1.0);
   };
 
   // --------------------------------------------
@@ -335,12 +335,16 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
         .then(data => {
           if (data.success) {
             console.log(`✅ ${type} Camera settings saved automatically!`);
+
+            // Calculate 35mm equivalent focal length (assuming 24mm sensor height for vertical FOV)
+            const mm = (12 / Math.tan(camera.fov / 2)).toFixed(1);
+
             const msg = `✅ ${type} Camera Saved Automatically!
 
 Alpha: ${camera.alpha.toFixed(2)} rad
 Beta: ${camera.beta.toFixed(2)} rad
 Radius: ${camera.radius.toFixed(2)}
-FOV: ${camera.fov.toFixed(2)} rad (${(camera.fov * 180 / Math.PI).toFixed(1)}°)
+FOV: ${camera.fov.toFixed(2)} rad (${(camera.fov * 180 / Math.PI).toFixed(1)}°) | ${mm}mm
 Target: (${camera.target.x.toFixed(1)}, ${camera.target.y.toFixed(1)}, ${camera.target.z.toFixed(1)})`;
             console.log(msg);
             alert(msg);

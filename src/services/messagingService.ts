@@ -5,7 +5,7 @@ import { useGameStore } from '../store/gameStore';
  * Interface for messages sent to the parent window
  */
 export interface GameEventMessage {
-    type: 'GAME_END' | 'GAME_STATUS' | 'CLOSE_REQUEST';
+    type: 'GAME_END' | 'GAME_START' | 'GAME_STATUS' | 'CLOSE_REQUEST';
     payload: {
         status?: 'victory' | 'gameover';
         score?: number;
@@ -58,6 +58,16 @@ export class MessagingService {
         this.sendMessage({
             type: 'GAME_END',
             payload: { status, score, coins }
+        });
+    }
+
+    /**
+     * Specific helper to notify game start
+     */
+    public notifyGameStart(): void {
+        this.sendMessage({
+            type: 'GAME_START',
+            payload: {}
         });
     }
 

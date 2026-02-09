@@ -42,14 +42,15 @@ body {
 /* Top HUD */
 /* ============================================ */
 
-.top-hud {
+.left-hud-stack {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 20px;
+  left: 20px;
   display: flex;
-  justify-content: space-between;
-  padding: 20px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 15px;
+  pointer-events: none;
 }
 
 /* ============================================ */
@@ -95,8 +96,8 @@ body {
 }
 
 .hud-icon {
-  width: 56px;
-  height: 56px;
+  width: 34px;
+  height: 34px;
   object-fit: contain;
   filter: drop-shadow(2px 2px 2px rgba(0, 0, 0, 0.5));
 }
@@ -419,8 +420,7 @@ body {
 .match-timer {
   position: absolute;
   top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 20px;
   font-family: 'Inter', 'Segoe UI', sans-serif;
   font-size: 2rem;
   font-weight: bold;
@@ -447,11 +447,11 @@ body {
 
   0%,
   100% {
-    transform: translateX(-50%) scale(1);
+    transform: scale(1);
   }
 
   50% {
-    transform: translateX(-50%) scale(1.1);
+    transform: scale(1.1);
   }
 }
 

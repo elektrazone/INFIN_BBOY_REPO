@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { messagingService } from '../services/messagingService';
+import { getAudioManager } from '../components/audio/audioManager';
 
 /**
  * Game state types
@@ -262,6 +263,12 @@ export const useGameStore = create<GameStore>((set) => ({
  * Subscribe to the store to handle automated messaging notifications
  */
 useGameStore.subscribe((state, prevState) => {
+    // Notify when intro screen is dismissed (game start)
+    if (prevState.showIntroScreen && !state.showIntroScreen) {
+        console.log('✉️ Auto-notifying game start');
+        messagingService.notifyGameStart();
+    }
+
     // Notify when state changes to 'victory' or 'gameover'
     if (state.gameState !== prevState.gameState) {
         if (state.gameState === 'victory' || state.gameState === 'gameover') {
@@ -270,6 +277,15 @@ useGameStore.subscribe((state, prevState) => {
 
             console.log(`✉️ Auto-notifying end state: ${state.gameState}`);
             messagingService.notifyGameEnd(state.gameState, finalScore, finalCoins);
+
+            // Stop music on gameover (Victory already handles its own music transition)
+            if (state.gameState === 'gameover') {
+                const audio = getAudioManager();
+                if (audio) {
+                    console.log('🎵 Game Over: Stopping background music');
+                    audio.stopMusic();
+                }
+            }
         }
     }
 });
