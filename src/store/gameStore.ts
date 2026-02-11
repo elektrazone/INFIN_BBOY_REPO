@@ -265,7 +265,7 @@ export const useGameStore = create<GameStore>((set) => ({
 useGameStore.subscribe((state, prevState) => {
     // Notify when intro screen is dismissed (game start)
     if (prevState.showIntroScreen && !state.showIntroScreen) {
-        console.log('✉️ Auto-notifying game start');
+        console.log('✉️ Auto-notifying game start (Hook Triggered)');
         messagingService.notifyGameStart();
     }
 

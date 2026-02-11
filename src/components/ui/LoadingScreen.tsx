@@ -22,15 +22,11 @@ export const LoadingScreen: React.FC = () => {
 
     return (
         <div className="loading-screen">
-            {isLoading ? (
+            {isLoading && (
                 <div className="loading-indicator">
                     <div className="loading-spinner"></div>
-                    <div className="loading-text">Loading...</div>
+                    <div className="loading-text">Loading Assets...</div>
                 </div>
-            ) : (
-                <button className="start-button" onClick={handleStart} aria-label="Start Game">
-                    PLAY
-                </button>
             )}
         </div>
     );

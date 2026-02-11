@@ -1344,16 +1344,43 @@ export function setupPlayerController(
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left, y = event.clientY - rect.top;
     const width = rect.width, height = rect.height;
-    const leftZone = x < width * 0.33, rightZone = x > width * 0.66;
-    const topZone = y < height * 0.33, bottomZone = y > height * 0.66;
-    if (topZone && !leftZone && !rightZone) { keyState.jump = true; }
-    else if (bottomZone && !leftZone && !rightZone) { keyState.slide = true; }
-    else if (leftZone) { performLaneSwitch(1); }
-    else if (rightZone) { performLaneSwitch(-1); }
+
+    // Define zones (3x3 Grid)
+    const leftZone = x < width * 0.33;
+    const rightZone = x > width * 0.66;
+    const centerX = !leftZone && !rightZone;
+
+    const topZone = y < height * 0.33;
+    const bottomZone = y > height * 0.66;
+    const centerY = !topZone && !bottomZone;
+
+    console.log(`POINTER: x:${Math.round(x)} y:${Math.round(y)} | Zones: L:${leftZone} R:${rightZone} T:${topZone} B:${bottomZone}`);
+
+    // LOGIC PRIORITY:
+    // 1. Center Column handles vertical actions (Jump/Slide)
+    // 2. Left/Right Columns handle lane switching
+    // 3. Center square acts as a "Neutral/Action" zone (also Jump)
+
+    if (centerX) {
+      if (topZone || centerY) {
+        keyState.jump = true;
+        console.log("👆 TAP: Jump (Center/Top Center)");
+      } else if (bottomZone) {
+        keyState.slide = true;
+        console.log("👇 TAP: Slide (Bottom Center)");
+      }
+    } else if (leftZone) {
+      performLaneSwitch(1);
+      console.log("👈 TAP: Turn Left");
+    } else if (rightZone) {
+      performLaneSwitch(-1);
+      console.log("👉 TAP: Turn Right");
+    }
   }
 
   function handlePointerUp(event: PointerEvent) {
-    keyState.slide = false; keyState.jump = false;
+    keyState.slide = false;
+    keyState.jump = false;
   }
 
   // Trigger Cheer animation for victory

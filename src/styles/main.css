@@ -239,7 +239,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(180deg, #0f172a 0%, #059669 100%);
+  background: linear-gradient(180deg, #0f172a 0%, #b91c1c 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -472,4 +472,117 @@ body {
   background-position: center center;
   background-repeat: no-repeat;
   background-size: cover;
+}
+
+/* ============================================ */
+/* Touch Zones Debug Overlay                    */
+/* Activated via ?debug=zones URL parameter     */
+/* ============================================ */
+
+.touch-zones-debug {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.touch-active-area {
+  flex: 0 0 50%;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+}
+
+.touch-disabled-area {
+  flex: 0 0 50%;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 4px solid rgba(255, 68, 68, 0.5);
+}
+
+.touch-disabled-area span {
+  font-family: 'Inter', sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+  color: #ff4444;
+  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.9);
+  letter-spacing: 2px;
+  animation: warning-pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes warning-pulse {
+  from {
+    opacity: 0.6;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+.touch-active-area .touch-zone,
+.touch-active-area .touch-zone-column {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.touch-active-area .touch-zone span {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  color: white;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+/* Left column: 33% width */
+.touch-active-area .touch-zone.left {
+  flex: 0 0 33.33%;
+  background: rgba(59, 130, 246, 0.2);
+  border-right: 2px dashed rgba(255, 255, 255, 0.25);
+}
+
+/* Center column: 33% width */
+.touch-active-area .touch-zone-column {
+  flex: 0 0 33.34%;
+  flex-direction: column;
+}
+
+.touch-active-area .touch-zone-column .touch-zone {
+  flex: 1;
+  width: 100%;
+}
+
+.touch-active-area .touch-zone.top {
+  background: rgba(74, 222, 128, 0.2);
+  border-bottom: 2px dashed rgba(255, 255, 255, 0.2);
+}
+
+.touch-active-area .touch-zone.center {
+  background: rgba(74, 222, 128, 0.15);
+  border-bottom: 2px dashed rgba(255, 255, 255, 0.2);
+}
+
+.touch-active-area .touch-zone.bottom {
+  background: rgba(251, 146, 60, 0.2);
+}
+
+/* Right column: 33% width */
+.touch-active-area .touch-zone.right {
+  flex: 0 0 33.33%;
+  background: rgba(168, 85, 247, 0.2);
+  border-left: 2px dashed rgba(255, 255, 255, 0.25);
 }

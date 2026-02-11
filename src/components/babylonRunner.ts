@@ -41,8 +41,32 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
   // --------------------------------------------
   const updateHardwareScaling = () => {
     if (!engine) return;
+
+    // Check for URL parameter quality overrides
+    const urlParams = new URLSearchParams(window.location.search);
+    const quality = urlParams.get('quality')?.toLowerCase() || urlParams.get('res')?.toLowerCase();
+
+    if (quality === "ultra") {
+      // Full native physical pixels (extremely sharp, heavy)
+      const scaling = 1.0 / window.devicePixelRatio;
+      engine.setHardwareScalingLevel(scaling);
+      console.log(`🚀 HIGH-RES MODE (ULTRA): Scaling at native physical pixels (${scaling.toFixed(4)})`);
+      return;
+    }
+
+    if (quality === "4k" || quality === "high") {
+      // 1.0 = Standard CSS resolution (1:1 with CSS pixels)
+      // On 4K screens, this looks very sharp.
+      engine.setHardwareScalingLevel(1.0);
+      console.log("🚀 HIGH-RES MODE (4K/HIGH): Scaling set to 1.0");
+      return;
+    }
+
+    // Default adaptive scaling (capping to ~1080p performance)
     const resolutionScale = Math.max(1, canvas.height / 1080);
-    engine.setHardwareScalingLevel(Math.min(2.5, resolutionScale));
+    const finalScaling = Math.min(2.5, resolutionScale);
+    engine.setHardwareScalingLevel(finalScaling);
+    console.log(`📉 DEFAULT ADAPTIVE SCALING: Level ${finalScaling.toFixed(2)}`);
   };
 
   // --------------------------------------------
@@ -148,8 +172,10 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
 
   function checkAllReady() {
     if (playerReady && obstaclesReady) {
-      console.log("✅ All assets loaded - ready to start when user taps");
+      console.log("✅ All assets loaded - starting automatically");
       useGameStore.getState().setLoading(false);
+      // Auto-start: dismiss intro screen immediately
+      useGameStore.getState().dismissIntroScreen();
     }
   }
 

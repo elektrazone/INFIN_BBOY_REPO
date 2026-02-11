@@ -1,10 +1,10 @@
 {
   "alpha": 1.57,
-  "beta": 1.08,
-  "radius": 63.5,
-  "targetX": -1.7,
-  "targetY": -13.2,
-  "targetZ": -5.1,
+  "beta": 1,
+  "radius": 80.15,
+  "targetX": -0.1,
+  "targetY": -14.7,
+  "targetZ": -3.9,
   "fov": 1.2,
   "filename": "camera-settings.json"
 }

@@ -5,20 +5,20 @@
 
 export const CAMERA_DEFAULTS = {
     alpha: 1.57,
-    beta: 1.08,
-    radius: 63.50,
-    targetX: -1.7,
-    targetY: -13.2,
-    targetZ: -5.1,
+    beta: 1.00,
+    radius: 80.15,
+    targetX: -0.1,
+    targetY: -14.7,
+    targetZ: -3.9,
     fov: 1.20,
 };
 
 export const INTRO_CAMERA_DEFAULTS = {
     alpha: 1.57,
-    beta: 1.08,
-    radius: 63.50,
-    targetX: -1.7,
-    targetY: -13.2,
-    targetZ: -5.1,
+    beta: 1.00,
+    radius: 80.15,
+    targetX: -0.1,
+    targetY: -14.7,
+    targetZ: -3.9,
     fov: 1.20,
 };

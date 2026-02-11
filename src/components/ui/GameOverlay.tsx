@@ -40,69 +40,96 @@ export const GameOverlay: React.FC = () => {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    // Show intro/loading screen until user taps start
-    if (showIntroScreen) {
-        return <LoadingScreen />;
+    // Check for debug zones param (supports ?debug=zones or #debug=zones)
+    const isDebugZones = new URLSearchParams(window.location.search).get('debug') === 'zones' ||
+        window.location.hash === '#debug=zones' ||
+        window.location.hash.includes('debug=zones');
+
+    if (isDebugZones) {
+        console.log("🛠️ TOUCH ZONES DEBUG ACTIVE");
     }
 
     return (
         <div className="game-overlay-container">
             {/* Performance Monitor - Press ` to toggle (dev only) */}
             {process.env.NODE_ENV === 'development' && <PerformanceMonitor />}
-            {/* Countdown Overlay */}
-            <CountdownOverlay />
-            <div className="left-hud-stack">
-                {/* Lives Counter */}
-                <div className="lives-container">
-                    <span className="lives-label">Lives:</span>
-                    <div className="hearts-container">
-                        {Array.from({ length: Math.max(0, lives) }).map((_, index) => (
-                            <HeartIcon key={index} className="hud-icon heart" />
-                        ))}
-                        {/* Show empty hearts for lost lives */}
-                        {Array.from({ length: Math.max(0, 3 - lives) }).map((_, index) => (
-                            <HeartEmptyIcon key={`empty-${index}`} className="hud-icon empty-heart" />
-                        ))}
-                    </div>
-                </div>
 
-                {/* Coin Counter */}
-                <div className="coin-counter">
-                    <CoinIcon className="hud-icon coin-icon" />
-                    <span className="coin-count">{coinCount}</span>
-                </div>
-            </div>
-
-            {/* Match Timer Display - Moved to right via CSS */}
-            {isMatchTimerActive && (
-                <div className={`match-timer ${matchTimeRemaining <= 10 ? 'timer-warning' : ''}`}>
-                    {formatTime(matchTimeRemaining)}
-                </div>
-            )}
-
-            {/* Power-ups Display - Prepared for future use */}
-            {activePowerUps.length > 0 && (
-                <div className="powerups-container">
-                    {activePowerUps.map((powerUp) => (
-                        <div key={powerUp.type} className="powerup-icon">
-                            ⚡ {powerUp.type}
+            {/* TOUCH ZONES DEBUG OVERLAY - Always rendered if param is present */}
+            {isDebugZones && (
+                <div className="touch-zones-debug">
+                    <div className="touch-active-area">
+                        <div className="touch-zone left"><span>TURN LEFT</span></div>
+                        <div className="touch-zone-column">
+                            <div className="touch-zone top"><span>JUMP</span></div>
+                            <div className="touch-zone center"><span>JUMP</span></div>
+                            <div className="touch-zone bottom"><span>SLIDE</span></div>
                         </div>
-                    ))}
-                </div>
-            )}
-
-            {/* Game Over Screen - Conditional */}
-            {gameState === 'gameover' && (
-                <div className="gameover-overlay">
-                    <div className="gameover-text">
-                        {matchTimeRemaining <= 0 ? "TIME'S UP!" : "GAME OVER"}
+                        <div className="touch-zone right"><span>TURN RIGHT</span></div>
                     </div>
+                    <div className="touch-disabled-area"><span>TOUCH DISABLED AREA (BOTTOM 50%)</span></div>
                 </div>
             )}
 
-            {/* Victory Screen - Conditional */}
-            {gameState === 'victory' && (
-                <OutroScreen />
+            {/* Conditional Game States */}
+            {showIntroScreen ? (
+                <LoadingScreen />
+            ) : (
+                <>
+                    {/* Countdown Overlay */}
+                    <CountdownOverlay />
+                    <div className="left-hud-stack">
+                        {/* Lives Counter */}
+                        <div className="lives-container">
+                            <span className="lives-label">Lives:</span>
+                            <div className="hearts-container">
+                                {Array.from({ length: Math.max(0, lives) }).map((_, index) => (
+                                    <HeartIcon key={index} className="hud-icon heart" />
+                                ))}
+                                {Array.from({ length: Math.max(0, 3 - lives) }).map((_, index) => (
+                                    <HeartEmptyIcon key={`empty-${index}`} className="hud-icon empty-heart" />
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Coin Counter */}
+                        <div className="coin-counter">
+                            <CoinIcon className="hud-icon coin-icon" />
+                            <span className="coin-count">{coinCount}</span>
+                        </div>
+                    </div>
+
+                    {/* Match Timer Display */}
+                    {isMatchTimerActive && (
+                        <div className={`match-timer ${matchTimeRemaining <= 10 ? 'timer-warning' : ''}`}>
+                            {formatTime(matchTimeRemaining)}
+                        </div>
+                    )}
+
+                    {/* Power-ups Display */}
+                    {activePowerUps.length > 0 && (
+                        <div className="powerups-container">
+                            {activePowerUps.map((powerUp) => (
+                                <div key={powerUp.type} className="powerup-icon">
+                                    ⚡ {powerUp.type}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Game Over Screen */}
+                    {gameState === 'gameover' && (
+                        <div className="gameover-overlay">
+                            <div className="gameover-text">
+                                {matchTimeRemaining <= 0 ? "TIME'S UP!" : "GAME OVER"}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Victory Screen */}
+                    {gameState === 'victory' && (
+                        <OutroScreen />
+                    )}
+                </>
             )}
         </div>
     );
