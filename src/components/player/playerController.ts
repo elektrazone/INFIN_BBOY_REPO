@@ -144,7 +144,7 @@ export function setupPlayerController(
     active: false,
     velocity: 0,
     gravity: -488,
-    jumpStrength: 180, // Increased from 163 for easier clearing
+    jumpStrength: 140, // Reduced from 180 for a tighter, more controlled jump arc
   };
 
   function startJumpMotion() {
@@ -720,6 +720,8 @@ export function setupPlayerController(
         keyState.slide = true;
         break;
 
+      case "ArrowUp":
+      case "Space":
       case "KeyW":
         keyState.jump = true;
         break;
@@ -743,6 +745,8 @@ export function setupPlayerController(
         keyState.slide = false;
         break;
 
+      case "ArrowUp":
+      case "Space":
       case "KeyW":
         keyState.jump = false;
         break;
