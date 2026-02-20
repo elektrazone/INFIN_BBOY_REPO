@@ -794,6 +794,7 @@ export function setupPlayerController(
   function updateMovementState() {
     if (!playerRoot || !stateMachine) return;
     if (debugOverrideState) return;
+    if (!gameStarted) return; // Block ALL movement before game starts
 
     const curState = stateMachine.currentState;
     if (curState === "Fall" || curState === "Getup" || curState === "Death") return;
@@ -813,8 +814,6 @@ export function setupPlayerController(
       if (audio) audio.playSFX("sfx_slide");
       return;
     }
-
-    if (!gameStarted) return;
   }
 
   // ------------------------------------------
@@ -867,7 +866,8 @@ export function setupPlayerController(
       updateMovementState();
     }
 
-    const dt = scene.getEngine().getDeltaTime() / 1000;
+    // Clamp dt to prevent physics explosions from frame-time spikes (e.g. after loading)
+    const dt = Math.min(scene.getEngine().getDeltaTime() / 1000, 0.05);
     invulnerabilityTimer = Math.max(0, invulnerabilityTimer - dt);
 
     // ------------------------------------------
@@ -1297,7 +1297,7 @@ export function setupPlayerController(
   // ------------------------------------------
   // TOUCH & POINTER INPUT
   // ------------------------------------------
-  const touchState = { startX: 0, startY: 0, startTime: 0, isDragging: false };
+  const touchState = { startX: 0, startY: 0, startTime: 0, isDragging: false, handledByPointer: false };
   const SWIPE_THRESHOLD = 50;
   const TAP_THRESHOLD = 200;
   const SWIPE_MAX_TIME = 500;
@@ -1308,6 +1308,7 @@ export function setupPlayerController(
     if (!touch) return;
     touchState.startX = touch.clientX; touchState.startY = touch.clientY;
     touchState.startTime = Date.now(); touchState.isDragging = true;
+    touchState.handledByPointer = false;
   }
 
   function handleTouchMove(event: TouchEvent) {
@@ -1323,14 +1324,14 @@ export function setupPlayerController(
     const deltaTime = Date.now() - touchState.startTime;
     touchState.isDragging = false;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    if (distance < SWIPE_THRESHOLD && deltaTime < TAP_THRESHOLD) {
-      // Swipe Up = Jump
-      keyState.jump = true; setTimeout(() => (keyState.jump = false), 100); return;
-    }
+
+    // Swipe-only: taps do nothing, require deliberate swipe gesture
     if (distance >= SWIPE_THRESHOLD && deltaTime < SWIPE_MAX_TIME) {
       if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        // Horizontal swipe: lane switch
         if (deltaX > 0) { performLaneSwitch(-1); } else { performLaneSwitch(1); }
       } else {
+        // Vertical swipe: up = jump, down = slide
         if (deltaY < 0) { keyState.jump = true; setTimeout(() => (keyState.jump = false), 100); }
         else { keyState.slide = true; setTimeout(() => (keyState.slide = false), 500); }
       }
@@ -1339,42 +1340,41 @@ export function setupPlayerController(
 
   function handlePointerDown(event: PointerEvent) {
     if (!isGameActive() || isVictorySequenceActive) return;
+    // Touch input is swipe-only — skip pointer handling for touch events
+    if (event.pointerType === 'touch') return;
     const canvas = scene.getEngine().getRenderingCanvas();
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left, y = event.clientY - rect.top;
     const width = rect.width, height = rect.height;
 
-    // Define zones (3x3 Grid)
-    const leftZone = x < width * 0.33;
-    const rightZone = x > width * 0.66;
+    // Dead zone: top 10% (HUD area — lives, coins, timer)
+    if (y < height * 0.10) return;
+
+    // Define zones: Left 40% | Center 20% | Right 40% (full height)
+    const leftZone = x < width * 0.40;
+    const rightZone = x > width * 0.60;
     const centerX = !leftZone && !rightZone;
 
-    const topZone = y < height * 0.33;
-    const bottomZone = y > height * 0.66;
-    const centerY = !topZone && !bottomZone;
+    // Center column: top 60% = Jump, bottom 40% = Slide
+    const centerTopZone = y < height * 0.60;
 
-    console.log(`POINTER: x:${Math.round(x)} y:${Math.round(y)} | Zones: L:${leftZone} R:${rightZone} T:${topZone} B:${bottomZone}`);
+    console.log(`POINTER: x:${Math.round(x)} y:${Math.round(y)} | Zones: L:${leftZone} R:${rightZone} CenterTop:${centerTopZone}`);
 
-    // LOGIC PRIORITY:
-    // 1. Center Column handles vertical actions (Jump/Slide)
-    // 2. Left/Right Columns handle lane switching
-    // 3. Center square acts as a "Neutral/Action" zone (also Jump)
-
-    if (centerX) {
-      if (topZone || centerY) {
-        keyState.jump = true;
-        console.log("👆 TAP: Jump (Center/Top Center)");
-      } else if (bottomZone) {
-        keyState.slide = true;
-        console.log("👇 TAP: Slide (Bottom Center)");
-      }
-    } else if (leftZone) {
+    if (leftZone) {
       performLaneSwitch(1);
-      console.log("👈 TAP: Turn Left");
+      console.log("👈 TAP: Move Left");
     } else if (rightZone) {
       performLaneSwitch(-1);
-      console.log("👉 TAP: Turn Right");
+      console.log("👉 TAP: Move Right");
+    } else if (centerX) {
+      if (centerTopZone) {
+        keyState.jump = true;
+        console.log("👆 TAP: Jump (Center Top)");
+      } else {
+        keyState.slide = true;
+        console.log("👇 TAP: Slide (Center Bottom)");
+      }
     }
   }
 

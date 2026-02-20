@@ -57,16 +57,15 @@ export const GameOverlay: React.FC = () => {
             {/* TOUCH ZONES DEBUG OVERLAY - Always rendered if param is present */}
             {isDebugZones && (
                 <div className="touch-zones-debug">
+                    <div className="touch-hud-deadzone"><span>NO TOUCH (HUD)</span></div>
                     <div className="touch-active-area">
-                        <div className="touch-zone left"><span>TURN LEFT</span></div>
+                        <div className="touch-zone left"><span>MOVE LEFT</span></div>
                         <div className="touch-zone-column">
-                            <div className="touch-zone top"><span>JUMP</span></div>
-                            <div className="touch-zone center"><span>JUMP</span></div>
-                            <div className="touch-zone bottom"><span>SLIDE</span></div>
+                            <div className="touch-zone jump"><span>JUMP</span></div>
+                            <div className="touch-zone slide"><span>SLIDE</span></div>
                         </div>
-                        <div className="touch-zone right"><span>TURN RIGHT</span></div>
+                        <div className="touch-zone right"><span>MOVE RIGHT</span></div>
                     </div>
-                    <div className="touch-disabled-area"><span>TOUCH DISABLED AREA (BOTTOM 50%)</span></div>
                 </div>
             )}
 
