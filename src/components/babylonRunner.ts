@@ -417,120 +417,36 @@ Target: (${camera.target.x.toFixed(1)}, ${camera.target.y.toFixed(1)}, ${camera.
   } | null = null;
 
   scene.onBeforeRenderObservable.add(() => {
-    // FULL CAMERA LOCK during gameplay
+    // FULL CAMERA LOCK - user input NEVER moves the camera
     const gameState = useGameStore.getState().gameState;
 
+    // Ensure camera controls are ALWAYS detached (no user input moves camera)
+    if (!cameraLocked) {
+      camera.detachControl();
+      cameraLocked = true;
+      console.log("🔒 Camera controls permanently locked (no user input)");
+    }
+
     if (gameState === "playing") {
-      // Lock camera - detach all controls and restore locked target
-      if (!cameraLocked) {
-        camera.detachControl();
-
-        // Only restore camera state when UNPAUSING (coming from paused state)
-        // On fresh start/restart (from idle or gameover), use current camera position
-        if (savedCameraState && previousGameState === "paused") {
-          camera.alpha = savedCameraState.alpha;
-          camera.beta = savedCameraState.beta;
-          camera.radius = savedCameraState.radius;
-          camera.target.copyFrom(savedCameraState.targetPosition);
-          console.log("📷 Camera state restored (unpause)");
-        } else {
-          console.log("📷 Fresh start - using current camera position");
-        }
+      // Restore camera state when UNPAUSING (coming from paused state)
+      if (savedCameraState && previousGameState === "paused") {
+        camera.alpha = savedCameraState.alpha;
+        camera.beta = savedCameraState.beta;
+        camera.radius = savedCameraState.radius;
+        camera.target.copyFrom(savedCameraState.targetPosition);
         savedCameraState = null;
-
-        // Restore locked target for gameplay
-        if (savedLockedTarget) {
-          camera.lockedTarget = savedLockedTarget;
-          savedLockedTarget = null;
-        }
-        cameraLocked = true;
-        console.log("🔒 Camera Locked (Playing)");
+        console.log("📷 Camera state restored (unpause)");
       }
-      return;
-    } else {
-      // Unlock camera - reattach controls and remove locked target for free orbiting
-      if (cameraLocked) {
-        // CRITICAL: Sync camera target before unlocking to prevent jump
-        // Store the exact target position before any modifications
-        let exactTargetPos: BABYLON.Vector3;
 
-        if (camera.lockedTarget) {
-          // Get the absolute position of the locked target
-          if (camera.lockedTarget instanceof BABYLON.Vector3) {
-            exactTargetPos = camera.lockedTarget.clone();
-          } else {
-            // TransformNode / AbstractMesh - get absolute position
-            const targetNode = camera.lockedTarget as any;
-            exactTargetPos = (targetNode.absolutePosition || targetNode.position).clone();
-          }
-
-          console.log(`📍 Locking target at: (${exactTargetPos.x.toFixed(2)}, ${exactTargetPos.y.toFixed(2)}, ${exactTargetPos.z.toFixed(2)})`);
-
-          // Save the locked target before removing it
-          savedLockedTarget = camera.lockedTarget;
-          camera.lockedTarget = null;
-
-          // Force set the target position explicitly
-          camera.setTarget(exactTargetPos);
-        } else {
-          // No locked target, use current target
-          exactTargetPos = camera.target.clone();
-        }
-
-        // Save camera orbit state AFTER setting target
-        savedCameraState = {
-          alpha: camera.alpha,
-          beta: camera.beta,
-          radius: camera.radius,
-          targetPosition: exactTargetPos
-        };
-        console.log(`💾 Camera state saved - Alpha: ${camera.alpha.toFixed(2)}, Beta: ${camera.beta.toFixed(2)}, Radius: ${camera.radius.toFixed(2)}`);
-
-        camera.attachControl(canvas, true);
-        cameraLocked = false;
-        console.log("🔓 Camera Unlocked (Not Playing) - Free orbit enabled");
+      // Restore locked target for gameplay
+      if (savedLockedTarget) {
+        camera.lockedTarget = savedLockedTarget;
+        savedLockedTarget = null;
       }
     }
 
     // Track previous game state for next frame
     previousGameState = gameState;
-
-    // User requested panning ONLY in Pause/Idle. 
-    // So block if gameover or victory sequence is active.
-    if (gameState === "gameover" || player.isVictorySequenceActive()) return;
-
-    const panSpeed = 2.5;
-
-    // Use Camera's local axes to determine "Up/Down/Left/Right" in screen space
-    // 1. Get View Matrix -> invert to get World-to-Camera direction vectors
-    // Actually, simpler way with ArcRotateCamera: 
-    // We can assume "Up" is roughly World Y+Z mix, but let's use the camera view.
-
-    // We want to move the TARGET.
-    const forward = camera.getDirection(BABYLON.Vector3.Forward());
-    const right = camera.getDirection(BABYLON.Vector3.Right());
-    const up = camera.getDirection(BABYLON.Vector3.Up());
-
-    // Flatten forward/right to XZ plane if we want "ground" movement?
-    // User said "translating from left to right or up down".
-    // "Up/Down" usually means Screen Y.
-
-    // Arrow Left/Right: Pan along camera Right vector
-    if (keysPressed["ArrowLeft"]) {
-      camera.target.subtractInPlace(right.scale(panSpeed));
-    }
-    if (keysPressed["ArrowRight"]) {
-      camera.target.addInPlace(right.scale(panSpeed));
-    }
-
-    // Arrow Up/Down: Pan along camera Up vector (Screen Y)
-    // Note: Since camera looks down, "Up" moves target "Back and Up".
-    if (keysPressed["ArrowUp"]) {
-      camera.target.addInPlace(up.scale(panSpeed));
-    }
-    if (keysPressed["ArrowDown"]) {
-      camera.target.subtractInPlace(up.scale(panSpeed));
-    }
   });
 
   // --------------------------------------------
