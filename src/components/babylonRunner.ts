@@ -172,10 +172,9 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
 
   function checkAllReady() {
     if (playerReady && obstaclesReady) {
-      console.log("✅ All assets loaded - starting automatically");
+      console.log("✅ All assets loaded - waiting for user to start");
       useGameStore.getState().setLoading(false);
-      // Auto-start: dismiss intro screen immediately
-      useGameStore.getState().dismissIntroScreen();
+      // Wait for user to manually dismiss the intro screen (TAP TO START)
     }
   }
 

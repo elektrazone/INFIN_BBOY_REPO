@@ -21,11 +21,15 @@ export const LoadingScreen: React.FC = () => {
     };
 
     return (
-        <div className="loading-screen">
-            {isLoading && (
+        <div className="loading-screen" onClick={!isLoading ? handleStart : undefined}>
+            {isLoading ? (
                 <div className="loading-indicator">
                     <div className="loading-spinner"></div>
                     <div className="loading-text">Loading Assets...</div>
+                </div>
+            ) : (
+                <div className="start-prompt">
+                    <div className="start-text blinking">TAP TO START</div>
                 </div>
             )}
         </div>

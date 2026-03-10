@@ -542,6 +542,34 @@ body {
   }
 }
 
+.start-prompt {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  cursor: pointer;
+  z-index: 1000;
+  pointer-events: auto; /* Required to intercept clicks over the canvas */
+}
+
+.start-text {
+  color: white;
+  font-family: 'Inter', sans-serif;
+  font-size: 48px;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  letter-spacing: 2px;
+}
+
+.blinking {
+  animation: pulse-blinker 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse-blinker {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.05); }
+}
+
 /* ============================================ */
 /* Outro Screen (Static Victory) */
 /* ============================================ */
