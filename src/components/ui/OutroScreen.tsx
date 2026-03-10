@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
+import { useGameStore } from '../../store/gameStore';
 import { FireworksOverlay } from './vfx/FireworksOverlay';
+import { CoinIcon } from './HudIcons';
 
 /**
  * CONFIGURAZIONE VIDEO
@@ -33,6 +35,8 @@ const BUTTON_CONFIG = {
 };
 
 export const OutroScreen: React.FC = () => {
+    const score = useGameStore((state) => state.score);
+    const coinCount = useGameStore((state) => state.coinCount);
 
     useEffect(() => {
         // Stop BabylonJS render loop immediately to save resources
@@ -102,6 +106,54 @@ export const OutroScreen: React.FC = () => {
                     transform: `translate(calc(-50% + ${VIDEO_CONFIG.offsetX}%), calc(-50% + ${VIDEO_CONFIG.offsetY}%)) scale(${VIDEO_CONFIG.scale})`
                 }}
             />
+
+            {/* Livello 2.7: Final Score Display */}
+            <div className="victory-score-container" style={{
+                position: 'absolute',
+                top: '68%',
+                left: '20%',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 15,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '10px'
+            }}>
+                <div className="victory-score-label" style={{
+                    color: '#ffd700',
+                    fontSize: '1.2rem',
+                    fontWeight: 'bold',
+                    textTransform: 'uppercase',
+                    letterSpacing: '2px',
+                    textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                }}>Final Score</div>
+                <div className="victory-score-value" style={{
+                    color: 'white',
+                    fontSize: '3.5rem',
+                    fontWeight: '900',
+                    textShadow: '0 4px 10px rgba(0,0,0,0.8), 0 0 20px rgba(255,215,0,0.4)',
+                    fontFamily: 'Inter, sans-serif'
+                }}>{score.toLocaleString()}</div>
+                
+                <div className="victory-coins" style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    backgroundColor: 'rgba(0,0,0,0.4)',
+                    padding: '8px 20px',
+                    borderRadius: '20px',
+                    border: '1px solid rgba(255,215,0,0.3)'
+                }}>
+                    <div style={{ width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <CoinIcon className="hud-icon" />
+                    </div>
+                    <span style={{ 
+                        color: '#ffd700', 
+                        fontSize: '1.5rem', 
+                        fontWeight: '800' 
+                    }}>{coinCount}</span>
+                </div>
+            </div>
 
             {/* Livello 3: Play Again Button */}
             <img

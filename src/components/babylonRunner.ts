@@ -417,31 +417,55 @@ Target: (${camera.target.x.toFixed(1)}, ${camera.target.y.toFixed(1)}, ${camera.
   } | null = null;
 
   scene.onBeforeRenderObservable.add(() => {
-    // FULL CAMERA LOCK - user input NEVER moves the camera
     const gameState = useGameStore.getState().gameState;
 
-    // Ensure camera controls are ALWAYS detached (no user input moves camera)
+    if (gameState === "paused") {
+      // UNLOCK CAMERA - allow user to orbit/pan when paused
+      if (cameraLocked) {
+        camera.attachControl(canvas, true);
+        cameraLocked = false;
+        
+        // Unlock target to allow free panning if needed, OR just orbit around player
+        // For now, let's keep orbit around player but allow detachment if they pan
+        savedLockedTarget = camera.lockedTarget;
+        camera.lockedTarget = null;
+
+        // Save orbital state to restore later
+        savedCameraState = {
+          alpha: camera.alpha,
+          beta: camera.beta,
+          radius: camera.radius,
+          targetPosition: camera.target.clone()
+        };
+
+        console.log("🔓 Camera unlocked (Paused)");
+      }
+      return; // Skip locking logic while paused
+    }
+
+    // NORMAL RE-LOCKING (for playing, idle, victory etc)
     if (!cameraLocked) {
       camera.detachControl();
       cameraLocked = true;
-      console.log("🔒 Camera controls permanently locked (no user input)");
-    }
+      console.log("🔒 Camera locked (Active)");
 
-    if (gameState === "playing") {
-      // Restore camera state when UNPAUSING (coming from paused state)
+      // Restore camera state when coming from paused state
       if (savedCameraState && previousGameState === "paused") {
         camera.alpha = savedCameraState.alpha;
         camera.beta = savedCameraState.beta;
         camera.radius = savedCameraState.radius;
         camera.target.copyFrom(savedCameraState.targetPosition);
         savedCameraState = null;
-        console.log("📷 Camera state restored (unpause)");
+        console.log("📷 Camera state restored (Unpaused)");
       }
 
-      // Restore locked target for gameplay
+      // Restore locked target
       if (savedLockedTarget) {
         camera.lockedTarget = savedLockedTarget;
         savedLockedTarget = null;
+      } else {
+        // Fallback to player target if none saved
+        camera.lockedTarget = player.cameraTarget || null;
       }
     }
 

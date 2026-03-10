@@ -24,6 +24,7 @@ export const GameOverlay: React.FC = () => {
     // Subscribe to game state from Zustand store
     // Components will automatically re-render when these values change
     const showIntroScreen = useGameStore((state) => state.showIntroScreen);
+    const score = useGameStore((state) => state.score);
     const coinCount = useGameStore((state) => state.coinCount);
     const lives = useGameStore((state) => state.lives);
     const gameState = useGameStore((state) => state.gameState);
@@ -118,8 +119,32 @@ export const GameOverlay: React.FC = () => {
                     {/* Game Over Screen */}
                     {gameState === 'gameover' && (
                         <div className="gameover-overlay">
-                            <div className="gameover-text">
-                                {matchTimeRemaining <= 0 ? "TIME'S UP!" : "GAME OVER"}
+                            <div className="gameover-content">
+                                <div className="gameover-text">
+                                    {matchTimeRemaining <= 0 ? "TIME'S UP!" : "GAME OVER"}
+                                </div>
+                                
+                                <div className="final-stats-container">
+                                    <div className="final-score-row">
+                                        <span className="final-stat-label">FINAL SCORE</span>
+                                        <span className="final-stat-value">{score.toLocaleString()}</span>
+                                    </div>
+                                    <div className="final-coins-row">
+                                        <div className="final-coin-content">
+                                            <CoinIcon className="hud-icon coin-icon" />
+                                            <span className="final-stat-value">{coinCount}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="replay-button-container">
+                                    <img
+                                        src="/PlayAgainButton.png"
+                                        alt="Restart"
+                                        onClick={() => window.location.reload()}
+                                        className="replay-button-image"
+                                    />
+                                </div>
                             </div>
                         </div>
                     )}
