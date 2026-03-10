@@ -455,6 +455,14 @@ Target: (${camera.target.x.toFixed(1)}, ${camera.target.y.toFixed(1)}, ${camera.
         camera.beta = savedCameraState.beta;
         camera.radius = savedCameraState.radius;
         camera.target.copyFrom(savedCameraState.targetPosition);
+        
+        // Clear any residual inertia from dragging during pause
+        camera.inertialAlphaOffset = 0;
+        camera.inertialBetaOffset = 0;
+        camera.inertialRadiusOffset = 0;
+        camera.inertialPanningX = 0;
+        camera.inertialPanningY = 0;
+
         savedCameraState = null;
         console.log("📷 Camera state restored (Unpaused)");
       }

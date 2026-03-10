@@ -79,6 +79,19 @@ export function createAudioManager(): AudioManagerController {
             source.start(0);
             console.log("🔓 Audio unlocked via AudioContext");
         }
+        
+        // ALSO unlock HTMLAudioElement specifically, as AudioContext unlock 
+        // doesn't always propagate to separate <audio> tags in some browsers.
+        const theme = getAudio("music_theme");
+        theme.volume = 0; // Play silently
+        theme.play().then(() => {
+            theme.pause();
+            theme.currentTime = 0;
+            theme.volume = musicVolume; // Restore volume
+            console.log("🔓 HTMLAudioElement unlocked.");
+        }).catch(err => {
+            console.warn("⚠️ Could not unlock HTMLAudioElement:", err);
+        });
     }
 
     /**

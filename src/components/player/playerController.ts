@@ -1036,6 +1036,8 @@ export function setupPlayerController(
   }
 
   function finishStartGame() {
+    if (!playerRoot) return;
+    
     gameStarted = true;
     introPlaying = false;
     isFallingInGap = false; // Safety reset on start/restart
@@ -1073,6 +1075,16 @@ export function setupPlayerController(
       activeZoomObserver = null;
     }
 
+    // Capture initial offsets relative to player's current position
+    const startOffsetX = cameraTarget ? cameraTarget.position.x - playerRoot.position.x : 0;
+    const startOffsetY = cameraTarget ? cameraTarget.position.y - playerRoot.position.y : 0;
+    const startOffsetZ = cameraTarget ? cameraTarget.position.z - playerRoot.position.z : 0;
+
+    // Assuming player starts at (0, baseY, 0) for the endTarget world coordinates
+    const endOffsetX = endTargetX;
+    const endOffsetY = endTargetY - baseY;
+    const endOffsetZ = endTargetZ;
+
     activeZoomObserver = scene.onBeforeRenderObservable.add(() => {
       const elapsed = performance.now() - zoomStartTime;
       const t = Math.min(1, elapsed / zoomDuration);
@@ -1085,10 +1097,14 @@ export function setupPlayerController(
       camera.beta = startBeta + (endBeta - startBeta) * easeT;
       camera.fov = startFov + (endFov - startFov) * easeT;
 
-      if (cameraTarget) {
-        cameraTarget.position.x = BABYLON.Scalar.Lerp(cameraTarget.position.x, endTargetX, easeT);
-        cameraTarget.position.y = BABYLON.Scalar.Lerp(cameraTarget.position.y, endTargetY, easeT);
-        cameraTarget.position.z = BABYLON.Scalar.Lerp(cameraTarget.position.z, endTargetZ, easeT);
+      if (cameraTarget && playerRoot) {
+        const currentOffsetX = BABYLON.Scalar.Lerp(startOffsetX, endOffsetX, easeT);
+        const currentOffsetY = BABYLON.Scalar.Lerp(startOffsetY, endOffsetY, easeT);
+        const currentOffsetZ = BABYLON.Scalar.Lerp(startOffsetZ, endOffsetZ, easeT);
+
+        cameraTarget.position.x = playerRoot.position.x + currentOffsetX;
+        cameraTarget.position.y = playerRoot.position.y + currentOffsetY;
+        cameraTarget.position.z = playerRoot.position.z + currentOffsetZ;
       }
 
       if (t >= 1) {
@@ -1098,7 +1114,11 @@ export function setupPlayerController(
         camera.alpha = endAlpha;
         camera.beta = endBeta;
         camera.fov = endFov;
-        if (cameraTarget) cameraTarget.position.set(endTargetX, endTargetY, endTargetZ);
+        if (cameraTarget && playerRoot) {
+          cameraTarget.position.x = playerRoot.position.x + endOffsetX;
+          cameraTarget.position.y = playerRoot.position.y + endOffsetY;
+          cameraTarget.position.z = playerRoot.position.z + endOffsetZ;
+        }
         console.log("✅ Camera Transition Complete");
       }
     });
@@ -1343,7 +1363,9 @@ export function setupPlayerController(
   }
 
   function handlePointerDown(event: PointerEvent) {
-    if (!isGameActive() || isVictorySequenceActive) return;
+    if (useGameStore.getState().gameState !== "playing") return;
+    // Only handle primary button (left click/touch)
+    if (event.button !== 0 && event.pointerType === "mouse") return;
     // Touch input is swipe-only — skip pointer handling for touch events
     if (event.pointerType === 'touch') return;
     const canvas = scene.getEngine().getRenderingCanvas();
@@ -1383,6 +1405,9 @@ export function setupPlayerController(
   }
 
   function handlePointerUp(event: PointerEvent) {
+    if (useGameStore.getState().gameState !== "playing") return;
+    // Only handle primary button
+    if (event.button !== 0 && event.pointerType === "mouse") return;
     keyState.slide = false;
     keyState.jump = false;
   }
