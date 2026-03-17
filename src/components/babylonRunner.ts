@@ -387,6 +387,14 @@ Target: (${camera.target.x.toFixed(1)}, ${camera.target.y.toFixed(1)}, ${camera.
       return; // Don't pass to player controller
     }
 
+    if (ev.code === "KeyO") {
+      ev.preventDefault();
+      ev.stopPropagation();
+      // We toggle demo camera mode via a custom event so the render loop can pick it up
+      window.dispatchEvent(new CustomEvent("toggleDemoCameraMode"));
+      return;
+    }
+
     onKeyDown(ev);
   });
 
@@ -408,45 +416,97 @@ Target: (${camera.target.x.toFixed(1)}, ${camera.target.y.toFixed(1)}, ${camera.
   let savedLockedTarget: BABYLON.Nullable<BABYLON.AbstractMesh | BABYLON.TransformNode | BABYLON.Vector3> = null;
   let previousGameState: string = "idle";
 
-  // Save camera orbit state when pausing
+  let demoCameraMode = false;
+  let previousDemoCameraMode = false;
+
+  window.addEventListener("toggleDemoCameraMode", () => {
+    demoCameraMode = !demoCameraMode;
+    console.log(`Demo Camera Mode: ${demoCameraMode ? "ON" : "OFF"}`);
+  });
+
+  // Save camera orbit state when pausing or entering demo mode
   let savedCameraState: {
     alpha: number;
     beta: number;
     radius: number;
+    fov: number;
     targetPosition: BABYLON.Vector3;
+    lockedTarget: BABYLON.Nullable<BABYLON.AbstractMesh | BABYLON.TransformNode | BABYLON.Vector3>;
   } | null = null;
 
   scene.onBeforeRenderObservable.add(() => {
-    // FULL CAMERA LOCK - user input NEVER moves the camera
     const gameState = useGameStore.getState().gameState;
 
-    // Ensure camera controls are ALWAYS detached (no user input moves camera)
-    if (!cameraLocked) {
+    // --- DEMO CAMERA MODE ---
+    if (demoCameraMode && !previousDemoCameraMode) {
+      savedCameraState = {
+        alpha: camera.alpha,
+        beta: camera.beta,
+        radius: camera.radius,
+        fov: camera.fov,
+        targetPosition: camera.target.clone(),
+        lockedTarget: camera.lockedTarget,
+      };
+      camera.lockedTarget = null;
+      camera.attachControl(canvas, true);
+      cameraLocked = false;
+      console.log("🔓 Camera unlocked (Demo Mode)");
+    }
+
+    if (!demoCameraMode && previousDemoCameraMode) {
       camera.detachControl();
       cameraLocked = true;
-      console.log("🔒 Camera controls permanently locked (no user input)");
-    }
-
-    if (gameState === "playing") {
-      // Restore camera state when UNPAUSING (coming from paused state)
-      if (savedCameraState && previousGameState === "paused") {
-        camera.alpha = savedCameraState.alpha;
-        camera.beta = savedCameraState.beta;
-        camera.radius = savedCameraState.radius;
-        camera.target.copyFrom(savedCameraState.targetPosition);
+      if (savedCameraState) {
+        if (savedCameraState.lockedTarget) {
+          camera.lockedTarget = savedCameraState.lockedTarget;
+        }
         savedCameraState = null;
-        console.log("📷 Camera state restored (unpause)");
-      }
-
-      // Restore locked target for gameplay
-      if (savedLockedTarget) {
-        camera.lockedTarget = savedLockedTarget;
-        savedLockedTarget = null;
+        console.log("🔒 Camera re-locked (Demo Mode off, user adjustments kept)");
       }
     }
 
-    // Track previous game state for next frame
+    if (!demoCameraMode) {
+      // --- PAUSE: Unlock camera for free orbiting ---
+      if (gameState === "paused" && previousGameState !== "paused") {
+        savedCameraState = {
+          alpha: camera.alpha,
+          beta: camera.beta,
+          radius: camera.radius,
+          fov: camera.fov,
+          targetPosition: camera.target.clone(),
+          lockedTarget: camera.lockedTarget,
+        };
+        camera.lockedTarget = null;
+        camera.attachControl(canvas, true);
+        cameraLocked = false;
+        console.log("🔓 Camera unlocked for pause (free orbit)");
+      }
+
+      // --- UNPAUSE: Keep user adjustments, re-lock controls ---
+      if (gameState === "playing" && previousGameState === "paused") {
+        camera.detachControl();
+        cameraLocked = true;
+
+        if (savedCameraState) {
+          if (savedCameraState.lockedTarget) {
+            camera.lockedTarget = savedCameraState.lockedTarget;
+          }
+          savedCameraState = null;
+          console.log("🔒 Camera re-locked (user adjustments kept)");
+        }
+      }
+
+      // Ensure camera controls are detached outside of pause
+      if (gameState !== "paused" && !cameraLocked) {
+        camera.detachControl();
+        cameraLocked = true;
+        console.log("🔒 Camera controls locked (no user input)");
+      }
+    }
+
+    // Track previous states for next frame
     previousGameState = gameState;
+    previousDemoCameraMode = demoCameraMode;
   });
 
   // --------------------------------------------

@@ -38,6 +38,9 @@ const SOUNDS: Record<string, string> = {
 export type SoundName = keyof typeof SOUNDS;
 
 export function createAudioManager(): AudioManagerController {
+    // DEMO MODE: Set to true to mute all audio for recording
+    const DEMO_MUTE = true;
+
     let currentMusic: HTMLAudioElement | null = null;
     let musicVolume = 0.5;
     let sfxVolume = 0.7;
@@ -85,6 +88,7 @@ export function createAudioManager(): AudioManagerController {
      * Play background music (stops any currently playing music)
      */
     function playMusic(name: string, loop: boolean = true): void {
+        if (DEMO_MUTE) return;
         // Stop current music if playing
         if (currentMusic) {
             currentMusic.pause();
@@ -122,6 +126,7 @@ export function createAudioManager(): AudioManagerController {
      * Play a one-shot sound effect
      */
     function playSFX(name: string): void {
+        if (DEMO_MUTE) return;
         const audio = getAudio(name);
 
         // Clone the audio for overlapping playback
