@@ -31,7 +31,7 @@ const CONFIG = {
     triggerZoneEnd: -200,
 
     // Fall probability per frame when in trigger zone
-    fallProbabilityPerSecond: 0.15,
+    fallProbabilityPerSecond: 0.075, // Reduced from 0.15 to reduce holes by 50%
 
     // Maximum adjacent missing cubes (controls gap size)
     maxAdjacentGaps: 1,
@@ -581,7 +581,7 @@ export function createFallingCubeRoad(
             const triggerZ = rearFallZ + triangleDelay; // Removed random offset for consistent falling
 
             // [DEBUG] FALLING ENABLED
-            const DEBUG_DISABLE_HOLES = true;
+            const DEBUG_DISABLE_HOLES = false;
 
             if (!DEBUG_DISABLE_HOLES && cube.instance.position.z > triggerZ && cube.state === "active") {
                 cube.state = "falling";

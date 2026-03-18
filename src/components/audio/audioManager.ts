@@ -39,7 +39,7 @@ export type SoundName = keyof typeof SOUNDS;
 
 export function createAudioManager(): AudioManagerController {
     // DEMO MODE: Set to true to mute all audio for recording
-    const DEMO_MUTE = true;
+    const DEMO_MUTE = false;
 
     let currentMusic: HTMLAudioElement | null = null;
     let musicVolume = 0.5;

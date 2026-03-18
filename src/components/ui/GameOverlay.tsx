@@ -121,6 +121,20 @@ export const GameOverlay: React.FC = () => {
                             <div className="gameover-text">
                                 {matchTimeRemaining <= 0 ? "TIME'S UP!" : "GAME OVER"}
                             </div>
+                            <div className="gameover-scorecard">
+                                <div className="gameover-scorecard-label">FINAL SCORE</div>
+                                <div className="gameover-scorecard-value">{coinCount}</div>
+                                <div className="gameover-coins-badge">
+                                    <CoinIcon className="gameover-coin-icon" />
+                                    <span className="gameover-coins-value">{coinCount}</span>
+                                </div>
+                            </div>
+                            <img
+                                src="/PlayAgainButton.png"
+                                alt="Play Again"
+                                className="gameover-play-again"
+                                onClick={() => window.location.reload()}
+                            />
                         </div>
                     )}
 

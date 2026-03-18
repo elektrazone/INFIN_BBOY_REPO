@@ -428,7 +428,7 @@ export function createObstacleSystem(
     }
 
     // DEMO MODE: Obstacles disabled for recording
-    const DEBUG_DISABLE_OBSTACLES = true;
+    const DEBUG_DISABLE_OBSTACLES = false;
     if (speed > 0 && !DEBUG_DISABLE_OBSTACLES) {
       spawnTimer += dt;
       if (spawnTimer >= nextSpawnDelay) {
