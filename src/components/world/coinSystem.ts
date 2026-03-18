@@ -16,10 +16,11 @@ export interface CoinInstance {
     mesh: BABYLON.AbstractMesh;
     active: boolean;
     rotationSpeed: number;
+    speedMultiplier: number;
 }
 
 export interface CoinController {
-    spawnCoin(laneIndex: number, yOffset: number, count?: number, spacing?: number, arcHeight?: number): void;
+    spawnCoin(laneIndex: number, yOffset: number, count?: number, spacing?: number, arcHeight?: number, speedMultiplier?: number, zPatternOffset?: number): void;
     update(dt: number, scrollSpeed: number): void;
     checkCollisions(playerAABB: PlayerAABB): number;
     dispose(): void;
@@ -44,7 +45,7 @@ export function createCoinSystem(
 
     // Coin loading state
     let isLoaded = false;
-    const pendingSpawns: Array<{ laneIndex: number; yOffset: number; count: number; spacing: number }> = [];
+    const pendingSpawns: Array<{ laneIndex: number; yOffset: number; count: number; spacing: number; arcHeight: number; speedMultiplier: number; zPatternOffset: number }> = [];
 
     // Obstacle checker function - will be set by environment.ts
     let hasObstacleAt: ((x: number, z: number, radius: number) => boolean) | null = null;
@@ -82,7 +83,7 @@ export function createCoinSystem(
 
         // Process any pending spawns
         for (const pending of pendingSpawns) {
-            spawnCoinInternal(pending.laneIndex, pending.yOffset, pending.count, pending.spacing);
+            spawnCoinInternal(pending.laneIndex, pending.yOffset, pending.count, pending.spacing, pending.arcHeight, pending.speedMultiplier, pending.zPatternOffset);
         }
         pendingSpawns.length = 0;
     }
@@ -189,18 +190,22 @@ export function createCoinSystem(
             mesh,
             active: true,
             rotationSpeed: 3.0,
+            speedMultiplier: 1.0,
         };
         coinPool.push(instance);
         return instance;
     }
 
-    function spawnCoinInternal(laneIndex: number, yOffset: number, count: number = 1, spacing: number = 10, arcHeight: number = 0) {
+    function spawnCoinInternal(laneIndex: number, yOffset: number, count: number = 1, spacing: number = 10, arcHeight: number = 0, speedMultiplier: number = 1.0, zPatternOffset: number = 0) {
         const xPos = laneIndex * laneWidth;
         const baseY = 5;
         const coinCheckRadius = 15; // Radius to check for obstacle collision
 
+        const totalZLength = (count - 1) * spacing;
+        const startZOffset = (-totalZLength / 2) + zPatternOffset;
+
         for (let i = 0; i < count; i++) {
-            const zOffset = i * spacing;
+            const zOffset = startZOffset + (i * spacing);
             const coinZ = spawnZ + zOffset;
 
             // Arc calculation: y = baseY + yOffset + sin(progress * PI) * arcHeight
@@ -209,7 +214,9 @@ export function createCoinSystem(
             const finalY = baseY + yOffset + currentArcY;
 
             // Skip this coin if it would intersect an obstacle
-            if (hasObstacleAt && hasObstacleAt(xPos, coinZ, coinCheckRadius)) {
+            // BUGFIX: We only check for ground-level obstacle intersections! 
+            // If the coin is explicitly placed high up (e.g. over a platform, finalY > 15), we ALWAYS spawn it.
+            if (finalY < 15 && hasObstacleAt && hasObstacleAt(xPos, coinZ, coinCheckRadius)) {
                 console.log(`🪙 Skipped coin at (${xPos}, ${coinZ}) - obstacle intersection`);
                 continue;
             }
@@ -217,18 +224,19 @@ export function createCoinSystem(
             const coin = acquire();
             if (!coin) continue;
 
+            coin.speedMultiplier = speedMultiplier;
             coin.mesh.position.set(xPos, finalY, coinZ);
             activeCoins.push(coin);
         }
     }
 
-    function spawnCoin(laneIndex: number, yOffset: number, count: number = 1, spacing: number = 10, arcHeight: number = 0) {
+    function spawnCoin(laneIndex: number, yOffset: number, count: number = 1, spacing: number = 10, arcHeight: number = 0, speedMultiplier: number = 1.0, zPatternOffset: number = 0) {
         if (!isLoaded) {
             // Queue for later
-            pendingSpawns.push({ laneIndex, yOffset, count, spacing, arcHeight } as any);
+            pendingSpawns.push({ laneIndex, yOffset, count, spacing, arcHeight, speedMultiplier, zPatternOffset });
             return;
         }
-        spawnCoinInternal(laneIndex, yOffset, count, spacing, arcHeight);
+        spawnCoinInternal(laneIndex, yOffset, count, spacing, arcHeight, speedMultiplier, zPatternOffset);
     }
 
     function update(dt: number, scrollSpeed: number) {
@@ -241,7 +249,7 @@ export function createCoinSystem(
             const coin = activeCoins[i];
 
             // Move
-            coin.mesh.position.z += movement;
+            coin.mesh.position.z += movement * coin.speedMultiplier;
 
             // Rotate
             coin.mesh.rotation.y += coin.rotationSpeed * dt;

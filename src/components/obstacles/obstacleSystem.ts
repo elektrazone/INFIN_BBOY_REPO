@@ -121,7 +121,7 @@ export function createObstacleSystem(
     duck: () => buildDuckObstacle(scene, materials.duck),
     platform: () => buildPlatformObstacle(scene, materials.platform),
     insuperable: () => buildInsuperableObstacle(scene, materials.insuperable),
-    hamburger: () => buildHamburgerObstacle(scene, 1.0),
+    hamburger: () => buildHamburgerObstacle(scene, 0.8),
   };
 
   const obstaclePool: ObstacleInstance[] = [];
@@ -165,7 +165,7 @@ export function createObstacleSystem(
     let isHamburgerVariant = false;
 
     if (useHamburger) {
-      const scale = type === "insuperable" ? 2.0 : 1.0;
+      const scale = type === "insuperable" ? 2.0 : 0.8;
       mesh = buildHamburgerObstacle(scene, scale);
       collisionMeshes = [mesh];
       variantUsed = undefined;
@@ -222,7 +222,7 @@ export function createObstacleSystem(
   let spawnTimer = 1.0;
   let currentPattern: ObstaclePattern = ALL_PATTERNS[0];
   let currentPatternIndex = 0;
-  let nextSpawnDelay = 1.0;
+  let nextSpawnDelay = 4.0; // Start with a safe 4 second buffer
 
   // State tracking
   let lastActionCost = 0;
@@ -324,7 +324,26 @@ export function createObstacleSystem(
     // Spawn Coins
     if (step.coins) {
       for (const coinDef of step.coins) {
-        coinController.spawnCoin(coinDef.laneIndex, coinDef.yOffset || 0, coinDef.count, coinDef.spacing, coinDef.arcHeight);
+        // Find if there's a platform just spawned in the same lane to sync the coin speed to the bus
+        const laneX = coinDef.laneIndex * laneWidth;
+        let coinSpeedMultiplier = 1.0;
+        
+        for (const o of activeObstacles) {
+            if (o.active && o.type === "platform" && Math.abs(o.mesh.position.x - laneX) < 1.0 && Math.abs(o.mesh.position.z - spawnZ) < 20) {
+                coinSpeedMultiplier = o.speedMultiplier || 1.0;
+                break;
+            }
+        }
+        
+        coinController.spawnCoin(
+            coinDef.laneIndex, 
+            coinDef.yOffset || 0, 
+            coinDef.count || 1, 
+            coinDef.spacing || 10, 
+            coinDef.arcHeight || 0, 
+            coinSpeedMultiplier,
+            coinDef.zOffset || 0
+        );
       }
     }
 
@@ -450,7 +469,7 @@ export function createObstacleSystem(
     activeObstacles.length = 0;
     spawnTimer = 0;
     currentPatternIndex = 0;
-    nextSpawnDelay = 2.0;
+    nextSpawnDelay = 4.0; // Grace period on restart
     const randomIndex = Math.floor(Math.random() * ALL_PATTERNS.length);
     currentPattern = ALL_PATTERNS[randomIndex];
     console.log("Obstacle system reset");

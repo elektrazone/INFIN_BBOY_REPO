@@ -53,6 +53,9 @@ export interface GameState {
 
     // Power-ups (prepared for future)
     activePowerUps: PowerUp[];
+
+    // Testing features
+    isInfiniteLives: boolean;
 }
 
 /**
@@ -78,6 +81,9 @@ interface GameActions {
     // Power-ups management (for future)
     activatePowerUp: (type: PowerUpType, duration: number) => void;
     deactivatePowerUp: (type: PowerUpType) => void;
+
+    // Infinite Lives Toggle
+    toggleInfiniteLives: () => void;
 
     // Loading management
     setLoading: (loading: boolean) => void;
@@ -117,6 +123,7 @@ const INITIAL_STATE: GameState = {
     matchTimeRemaining: 90,     // Starts at full duration
     isMatchTimerActive: false,
     activePowerUps: [],
+    isInfiniteLives: false,
 };
 
 /**
@@ -144,8 +151,14 @@ export const useGameStore = create<GameStore>((set) => ({
     resetCoinCount: () => set({ coinCount: 0 }),
 
     // Lives actions
+    toggleInfiniteLives: () => set((state) => ({ isInfiniteLives: !state.isInfiniteLives })),
+
     decrementLives: () =>
         set((state) => {
+            if (state.isInfiniteLives) {
+                console.log('🛡️ Infinite Lives Active - No life lost!');
+                return state;
+            }
             const newLives = Math.max(0, state.lives - 1);
             const newGameState = newLives <= 0 ? 'gameover' : state.gameState;
 

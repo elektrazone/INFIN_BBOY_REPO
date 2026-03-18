@@ -12,6 +12,7 @@ export interface CoinDef {
     count?: number;
     spacing?: number;
     arcHeight?: number;
+    zOffset?: number;
 }
 
 export interface PatternStep {
@@ -49,7 +50,7 @@ const PATTERN_VARIETY: ObstaclePattern = [
     // Bus platform right (VARIETY)
     {
         obstacles: [{ type: PLAT, laneIndex: 1 }],
-        coins: [{ laneIndex: 1, yOffset: 15, count: 5, spacing: 6 }],
+        coins: [{ laneIndex: 1, yOffset: 22, count: 5, spacing: 6, arcHeight: 20, zOffset: 120 }],
         delayNext: 2.0
     },
     // Pipe duck center
@@ -61,7 +62,7 @@ const PATTERN_VARIETY: ObstaclePattern = [
     // Bus platform left (VARIETY)
     {
         obstacles: [{ type: PLAT, laneIndex: -1 }],
-        coins: [{ laneIndex: -1, yOffset: 15, count: 5, spacing: 6 }],
+        coins: [{ laneIndex: -1, yOffset: 22, count: 5, spacing: 6, arcHeight: 20, zOffset: 120 }],
         delayNext: 2.0
     },
     // Breathe - Arc coins
@@ -179,7 +180,7 @@ const PATTERN_PLATFORM: ObstaclePattern = [
     // Bus platform left
     {
         obstacles: [{ type: PLAT, laneIndex: -1 }],
-        coins: [{ laneIndex: -1, yOffset: 15, count: 6, spacing: 6 }],
+        coins: [{ laneIndex: -1, yOffset: 22, count: 6, spacing: 6, arcHeight: 20, zOffset: 120 }],
         delayNext: 2.2
     },
     // Burger center
@@ -191,7 +192,7 @@ const PATTERN_PLATFORM: ObstaclePattern = [
     // Bus platform right
     {
         obstacles: [{ type: PLAT, laneIndex: 1 }],
-        coins: [{ laneIndex: 1, yOffset: 15, count: 6, spacing: 6 }],
+        coins: [{ laneIndex: 1, yOffset: 22, count: 6, spacing: 6, arcHeight: 20, zOffset: 120 }],
         delayNext: 2.2
     },
     // Fries wall
@@ -203,7 +204,7 @@ const PATTERN_PLATFORM: ObstaclePattern = [
     // Bus platform center
     {
         obstacles: [{ type: PLAT, laneIndex: 0 }],
-        coins: [{ laneIndex: 0, yOffset: 15, count: 6, spacing: 6 }],
+        coins: [{ laneIndex: 0, yOffset: 22, count: 6, spacing: 6, arcHeight: 20, zOffset: 120 }],
         delayNext: 2.2
     },
     // Breathe
@@ -257,5 +258,8 @@ export const ALL_PATTERNS = [
     PATTERN_DUCKS,     // Pipes focus
     PATTERN_WALLS,     // Fries/Soda walls
     PATTERN_PLATFORM,  // Bus platforms
-    PATTERN_SLALOM     // Alternating
+    PATTERN_SLALOM,    // Alternating
+
+    // Boost platform appearance rate by ~12% absolute
+    PATTERN_PLATFORM
 ];

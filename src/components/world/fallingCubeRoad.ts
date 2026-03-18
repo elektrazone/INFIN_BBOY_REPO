@@ -530,6 +530,8 @@ export function createFallingCubeRoad(
     // ----------------------------------------------------------
     // UPDATE LOOP
     // ----------------------------------------------------------
+    let gracePeriodTimer = 4.0; // 4 seconds of NO holes on start/reset
+    
     const updateObserver = scene.onBeforeRenderObservable.add(() => {
         const gameState = useGameStore.getState().gameState;
         if (gameState !== "playing") return;
@@ -539,6 +541,10 @@ export function createFallingCubeRoad(
 
         const dt = scene.getEngine().getDeltaTime() / 1000;
         const movement = speed * dt;
+
+        if (gracePeriodTimer > 0) {
+            gracePeriodTimer -= dt;
+        }
 
         // Update debris pieces
         updateDebris(dt, movement);
@@ -643,7 +649,7 @@ export function createFallingCubeRoad(
             // 4) TRIGGER FALLING (random chance in trigger zone)
             // Creates variable-sized holes using 2x2 patterns (1-4 cubes)
             // ----------------------------------------------------------
-            if (cube.state === "active" && !DEBUG_DISABLE_HOLES) {
+            if (cube.state === "active" && !DEBUG_DISABLE_HOLES && gracePeriodTimer <= 0) {
                 const cubeZ = cube.instance.position.z;
 
                 // Check if cube is in trigger zone
@@ -836,6 +842,7 @@ export function createFallingCubeRoad(
             cube.instance.isVisible = true;
         }
         fallenCubePositions.clear();
+        gracePeriodTimer = 4.0; // Restores grace period on restart
         console.log("🔄 Falling cube road reset");
     }
 

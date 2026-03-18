@@ -84,8 +84,8 @@ export function createAudioManager(): AudioManagerController {
 
         // Unlock HTML5 Audio elements
         // Browsers require audio elements to be played within a user gesture.
-        // We play and immediately pause them so they can be played programmatically later.
-        const warmup = ["music_theme", "sfx_jump"];
+        // We playfully silence them so they can be played programmatically later.
+        const warmup = ["sfx_jump"];
         warmup.forEach(name => getAudio(name)); // Ensure they are cached
 
         audioCache.forEach((audio, name) => {
@@ -95,10 +95,14 @@ export function createAudioManager(): AudioManagerController {
                 const p = audio.play();
                 if (p !== undefined) {
                     p.then(() => {
-                        audio.pause();
-                        audio.currentTime = 0;
+                        if (audio !== currentMusic) {
+                            audio.pause();
+                            audio.currentTime = 0;
+                        }
                         audio.volume = prevVolume;
-                    }).catch(() => {});
+                    }).catch(() => {
+                        audio.volume = prevVolume;
+                    });
                 }
             }
         });
@@ -106,11 +110,39 @@ export function createAudioManager(): AudioManagerController {
         console.log("🔓 Audio unlocked via AudioContext and HTML5 warmup");
     }
 
+    let pendingMusic: string | null = null;
+    let fallbackListenerAttached = false;
+
+    // Attach a global listener to ensure music plays upon interaction if it was deferred or blocked
+    function attachInteractionFallback() {
+        if (fallbackListenerAttached) return;
+        fallbackListenerAttached = true;
+        const trigger = () => {
+            if (pendingMusic) {
+                console.log("🎵 Recovering blocked music via global interaction listener...");
+                const musicToPlay = pendingMusic;
+                pendingMusic = null;
+                playMusic(musicToPlay, true);
+            }
+            window.removeEventListener("keydown", trigger);
+            window.removeEventListener("pointerdown", trigger);
+            window.removeEventListener("touchstart", trigger);
+            fallbackListenerAttached = false;
+        };
+        window.addEventListener("keydown", trigger);
+        window.addEventListener("pointerdown", trigger);
+        window.addEventListener("touchstart", trigger);
+    }
+
     /**
      * Play background music (stops any currently playing music)
      */
     function playMusic(name: string, loop: boolean = true): void {
         if (DEMO_MUTE) return;
+        
+        // Always track the last requested music, even if blocked
+        pendingMusic = name;
+
         // Stop current music if playing
         if (currentMusic) {
             currentMusic.pause();
@@ -121,14 +153,19 @@ export function createAudioManager(): AudioManagerController {
         const audio = getAudio(name);
         audio.loop = loop;
         audio.volume = musicVolume;
+        
+        // Immediately set currentMusic so unlockAudio() knows not to asynchronously pause it
+        currentMusic = audio;
 
         audio.play()
             .then(() => {
                 console.log(`🎵 Playing music: ${name}`);
-                currentMusic = audio;
+                pendingMusic = null; // Successfully played!
             })
             .catch((err) => {
-                console.error(`❌ Failed to play music: ${name}`, err);
+                console.warn(`⚠️ Music blocked by browser (${name}), queueing for next user interaction`);
+                currentMusic = null;
+                attachInteractionFallback();
             });
     }
 

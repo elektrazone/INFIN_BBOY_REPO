@@ -99,6 +99,7 @@ export function setupPlayerController(
   let gameStarted = false;
   let requestedStart = false;
   let isFirstStart = true; // Track if this is the very first game start
+  let didPlayIntroThisSession = false; // Tracks if the intro zoom should trigger
   let introPlaying = false; // Track if intro sequence is active
   let isVictorySequenceActive = false; // Block input and trigger orbit
   let activeZoomObserver: BABYLON.Observer<BABYLON.Scene> | null = null;
@@ -359,8 +360,8 @@ export function setupPlayerController(
       const deltaY = feetY - platformTopY;
 
       // true solo se la piattaforma è fisicamente sotto il giocatore
-      // (tolleranza 0–10 unità, regolabile se serve)
-      const platformBelow = deltaY >= -2 && deltaY <= 30;
+      // (tolleranza allargata a -15 per catturare cadute veloci tra i frame)
+      const platformBelow = deltaY >= -15 && deltaY <= 30;
 
       if (DEBUG.showPlatformAABB && hit) {
         const now = performance.now();
@@ -552,7 +553,8 @@ export function setupPlayerController(
     if (!playerBox) return null;
 
     const obstacles = obstacleController.getActiveObstacles();
-    const platformTopTolerance = 1.2;
+    // Huge tolerance to make mounting platforms extremely forgiving (user request)
+    const platformTopTolerance = 8.0;
 
     for (const obs of obstacles) {
       if (!obs.active) continue;
@@ -681,6 +683,15 @@ export function setupPlayerController(
     if (event.code === "Digit0") {
       event.preventDefault();
       triggerDebugState(null);
+      return;
+    }
+
+    // INFINITE LIVES TOGGLE (I)
+    if (event.code === "KeyI") {
+      event.preventDefault();
+      const store = useGameStore.getState();
+      store.toggleInfiniteLives();
+      console.log(`♾️ Infinite Lives: ${useGameStore.getState().isInfiniteLives ? 'ON' : 'OFF'}`);
       return;
     }
 
@@ -952,8 +963,11 @@ export function setupPlayerController(
       }
       // If falling, we intentionally ignore deltaY to "detach" camera from falling player.
 
-      // Re-enabled lateral tracking (User preference)
-      cameraTarget.position.x += deltaX;
+      // 50% Soft-Tracking (Loose Framing):
+      // The camera tracks half of the left/right movement. 
+      // This cuts the background "drifting" sensation in half, while also reducing
+      // the physical amount the player model moves across the screen by half.
+      cameraTarget.position.x += deltaX * 0.5;
       cameraTarget.position.z += deltaZ;
     }
 
@@ -1027,6 +1041,7 @@ export function setupPlayerController(
     // If first start, play intro sequence
     if (isFirstStart && stateMachine && playerRoot) {
       isFirstStart = false;
+      didPlayIntroThisSession = true;
       playIntroSequence();
       return;
     }
@@ -1046,7 +1061,10 @@ export function setupPlayerController(
     useGameStore.getState().setGameState('playing');
     if (stateMachine) stateMachine.setPlayerState("Run", true);
 
-    // CAMERA ZOOM OUT TRANSITION
+    // ONLY TRIGGER ZOOM IF INTRO WAS PLAYED THIS SESSION
+    if (didPlayIntroThisSession) {
+      didPlayIntroThisSession = false;
+      // CAMERA ZOOM OUT TRANSITION
     const startRadius = camera.radius;
     const startAlpha = camera.alpha;
     const startBeta = camera.beta;
@@ -1102,6 +1120,7 @@ export function setupPlayerController(
         console.log("✅ Camera Transition Complete");
       }
     });
+    }
   }
 
   /**
@@ -1222,27 +1241,35 @@ export function setupPlayerController(
     playerRoot.position.x = 0;
     playerRoot.rotation.y = 0; // RESET: Face the camera (Diner) at start
 
-    // RESET CAMERA TARGET to default framing
-    // Always reset to player position with default Y offset (-15) on full reset
+    // RESET CAMERA TARGET
+    // Always attach to player x/z on full reset, but only force intro framing if first start
     if (cameraTarget) {
-      // Use saved intro settings if available, else defaults
-      const introAlpha = parseFloat(localStorage.getItem("camera_alpha_intro") || (INTRO_CAMERA_DEFAULTS as any)?.alpha || CAMERA_DEFAULTS.alpha.toString());
-      const introBeta = parseFloat(localStorage.getItem("camera_beta_intro") || (INTRO_CAMERA_DEFAULTS as any)?.beta || CAMERA_DEFAULTS.beta.toString());
-      // Default intro radius should be CLOSER than gameplay (e.g. 50%) to ensure zoom-OUT
-      const introRadius = parseFloat(localStorage.getItem("camera_radius_intro") || (INTRO_CAMERA_DEFAULTS as any)?.radius || (CAMERA_DEFAULTS.radius * 0.5).toString());
-      const introTargetX = parseFloat(localStorage.getItem("camera_target_x_intro") || (INTRO_CAMERA_DEFAULTS as any)?.targetX || playerRoot.position.x.toString());
-      const introTargetY = parseFloat(localStorage.getItem("camera_target_y_intro") || (INTRO_CAMERA_DEFAULTS as any)?.targetY || (playerRoot.position.y - 15).toString());
-      const introTargetZ = parseFloat(localStorage.getItem("camera_target_z_intro") || (INTRO_CAMERA_DEFAULTS as any)?.targetZ || playerRoot.position.z.toString());
-      const introFov = parseFloat(localStorage.getItem("camera_fov_intro") || (INTRO_CAMERA_DEFAULTS as any)?.fov || (CAMERA_DEFAULTS as any)?.fov || "1.5");
+      if (isFirstStart) {
+        // First start: Force camera to intro defaults
+        const introAlpha = parseFloat(localStorage.getItem("camera_alpha_intro") || (INTRO_CAMERA_DEFAULTS as any)?.alpha || CAMERA_DEFAULTS.alpha.toString());
+        const introBeta = parseFloat(localStorage.getItem("camera_beta_intro") || (INTRO_CAMERA_DEFAULTS as any)?.beta || CAMERA_DEFAULTS.beta.toString());
+        const introRadius = parseFloat(localStorage.getItem("camera_radius_intro") || (INTRO_CAMERA_DEFAULTS as any)?.radius || (CAMERA_DEFAULTS.radius * 0.5).toString());
+        const introTargetX = parseFloat(localStorage.getItem("camera_target_x_intro") || (INTRO_CAMERA_DEFAULTS as any)?.targetX || playerRoot.position.x.toString());
+        const introTargetY = parseFloat(localStorage.getItem("camera_target_y_intro") || (INTRO_CAMERA_DEFAULTS as any)?.targetY || (playerRoot.position.y - 15).toString());
+        const introTargetZ = parseFloat(localStorage.getItem("camera_target_z_intro") || (INTRO_CAMERA_DEFAULTS as any)?.targetZ || playerRoot.position.z.toString());
+        const introFov = parseFloat(localStorage.getItem("camera_fov_intro") || (INTRO_CAMERA_DEFAULTS as any)?.fov || (CAMERA_DEFAULTS as any)?.fov || "1.5");
 
-      cameraTarget.position.set(introTargetX, introTargetY, introTargetZ);
+        cameraTarget.position.set(introTargetX, introTargetY, introTargetZ);
 
-      // Apply Intro Zoom
-      camera.radius = introRadius;
-      camera.alpha = introAlpha;
-      camera.beta = introBeta;
-      camera.fov = introFov;
-      console.log(`📷 Camera target reset and zoomed in (radius: ${introRadius})`);
+        // Apply Intro Zoom
+        camera.radius = introRadius;
+        camera.alpha = introAlpha;
+        camera.beta = introBeta;
+        camera.fov = introFov;
+        console.log(`📷 Camera forced to intro focal point (radius: ${introRadius})`);
+      } else {
+        // Restarting mid-game: PRESERVE manual settings, just follow teleport
+        cameraTarget.position.x = playerRoot.position.x;
+        cameraTarget.position.z = playerRoot.position.z;
+        // Do NOT touch cameraTarget.position.y to preserve manual elevation
+        // Do NOT touch camera.radius, camera.alpha, camera.beta
+        console.log(`📷 Camera repositioned to player base (preserving manual angle/zoom)`);
+      }
 
       // Cancel camera zoom if active
       if (activeZoomObserver) {
@@ -1296,6 +1323,12 @@ export function setupPlayerController(
     // 4. Start Game
     startGame();
     useGameStore.getState().startMatchTimer();
+
+    // 5. Restart Music (bypasses countdown, so must be called manually here)
+    const audio = getAudioManager();
+    if (audio) {
+       audio.playMusic("music_theme", true);
+    }
   }
 
   // ------------------------------------------
