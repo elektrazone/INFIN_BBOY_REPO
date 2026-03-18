@@ -74,28 +74,22 @@ const PATTERN_VARIETY: ObstaclePattern = [
 
 // 2. JUMP FOCUS - Burgers with variety
 const PATTERN_JUMPS: ObstaclePattern = [
-    // Burger left
-    {
-        obstacles: [{ type: JUMP, laneIndex: -1 }],
-        coins: [{ laneIndex: -1, count: 5, spacing: 6, yOffset: 12, arcHeight: 18 }],
-        delayNext: 1.5
-    },
     // Burger center
     {
         obstacles: [{ type: JUMP, laneIndex: 0 }],
         coins: [{ laneIndex: 0, count: 6, spacing: 6, yOffset: 12, arcHeight: 20 }],
         delayNext: 1.5
     },
-    // Burger right
-    {
-        obstacles: [{ type: JUMP, laneIndex: 1 }],
-        coins: [{ laneIndex: 1, count: 5, spacing: 6, yOffset: 12, arcHeight: 18 }],
-        delayNext: 1.5
-    },
     // Fries wall
     {
         obstacles: [{ type: WALL, laneIndex: 0 }],
         coins: [{ laneIndex: 1, count: 4, spacing: 6 }],
+        delayNext: 1.2
+    },
+    // Second Fries wall
+    {
+        obstacles: [{ type: WALL, laneIndex: -1 }],
+        coins: [{ laneIndex: 0, count: 4, spacing: 6 }],
         delayNext: 1.2
     },
     // Breathe
@@ -125,6 +119,12 @@ const PATTERN_DUCKS: ObstaclePattern = [
         obstacles: [{ type: JUMP, laneIndex: 1 }],
         coins: [{ laneIndex: 1, count: 5, spacing: 6, yOffset: 12, arcHeight: 18 }],
         delayNext: 1.5
+    },
+    // Fries wall
+    {
+        obstacles: [{ type: WALL, laneIndex: 0 }],
+        coins: [{ laneIndex: -1, count: 4, spacing: 6 }],
+        delayNext: 1.2
     },
     // Pipe right
     {

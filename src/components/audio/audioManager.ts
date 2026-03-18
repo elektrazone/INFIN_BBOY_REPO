@@ -80,8 +80,30 @@ export function createAudioManager(): AudioManagerController {
             source.buffer = buffer;
             source.connect(ctx.destination);
             source.start(0);
-            console.log("🔓 Audio unlocked via AudioContext");
         }
+
+        // Unlock HTML5 Audio elements
+        // Browsers require audio elements to be played within a user gesture.
+        // We play and immediately pause them so they can be played programmatically later.
+        const warmup = ["music_theme", "sfx_jump"];
+        warmup.forEach(name => getAudio(name)); // Ensure they are cached
+
+        audioCache.forEach((audio, name) => {
+            if (audio !== currentMusic) {
+                const prevVolume = audio.volume;
+                audio.volume = 0; // Mute during warmup
+                const p = audio.play();
+                if (p !== undefined) {
+                    p.then(() => {
+                        audio.pause();
+                        audio.currentTime = 0;
+                        audio.volume = prevVolume;
+                    }).catch(() => {});
+                }
+            }
+        });
+
+        console.log("🔓 Audio unlocked via AudioContext and HTML5 warmup");
     }
 
     /**

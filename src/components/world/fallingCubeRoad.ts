@@ -31,7 +31,7 @@ const CONFIG = {
     triggerZoneEnd: -200,
 
     // Fall probability per frame when in trigger zone
-    fallProbabilityPerSecond: 0.075, // Reduced from 0.15 to reduce holes by 50%
+    fallProbabilityPerSecond: 0.06375, // Reduced from 0.075 for an additional 15% reduction
 
     // Maximum adjacent missing cubes (controls gap size)
     maxAdjacentGaps: 1,
