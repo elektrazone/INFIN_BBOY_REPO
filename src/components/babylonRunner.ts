@@ -221,6 +221,35 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
   });
 
   // --------------------------------------------
+  // UNIVERSAL AUDIO UNLOCK (FOR AUTO-START)
+  // --------------------------------------------
+  let audioUnlocked = false;
+  const unlockAudioOnInteraction = () => {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+    audioManager.unlockAudio();
+    
+    // If the game is already playing, start the music since it was blocked
+    const { gameState, isMatchTimerActive } = useGameStore.getState();
+    if (gameState === "playing" && isMatchTimerActive) {
+      const audio = getAudioManager();
+      if (audio) {
+        console.log("🎵 Late starting music upon first user interaction");
+        audio.playMusic("music_theme", true);
+      }
+    }
+    
+    // Clean up listeners
+    window.removeEventListener("keydown", unlockAudioOnInteraction);
+    window.removeEventListener("pointerdown", unlockAudioOnInteraction);
+    window.removeEventListener("touchstart", unlockAudioOnInteraction);
+  };
+
+  window.addEventListener("keydown", unlockAudioOnInteraction);
+  window.addEventListener("pointerdown", unlockAudioOnInteraction);
+  window.addEventListener("touchstart", unlockAudioOnInteraction);
+
+  // --------------------------------------------
   // ENVIRONMENT
   // --------------------------------------------
   const environment = setupEnvironment(
