@@ -1,5 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FireworksOverlay } from './vfx/FireworksOverlay';
+import { HighScoreOverlay } from './HighScoreOverlay';
+import { useGameStore } from '../../store/gameStore';
 
 /**
  * CONFIGURAZIONE VIDEO
@@ -29,16 +31,25 @@ const BUTTON_CONFIG = {
     width: '50%',       // Larghezza in % così scala con lo schermo
     top: '5%',          // Distanza dal bordo superiore
     left: '70%',        // Centratura orizzontale
-    zIndex: 10          // Deve stare sopra il video
+    zIndex: 3000          // Must be > 2500 to sit above HighScoreOverlay
 };
 
 export const OutroScreen: React.FC = () => {
+    const finalScore = useGameStore((state) => state.coinCount);
+    const [showScore, setShowScore] = useState(false);
 
     useEffect(() => {
         // Stop BabylonJS render loop immediately to save resources
         // and prevent interference with React overlay
         console.log("🛑 Dispatching stopRenderLoop for Victory Screen");
         window.dispatchEvent(new Event("stopRenderLoop"));
+
+        // Wait ~4 seconds for one animation cycle to finish before showing the leaderboard
+        const timer = setTimeout(() => {
+            setShowScore(true);
+        }, 4000);
+
+        return () => clearTimeout(timer);
     }, []);
 
     return (
@@ -88,6 +99,7 @@ export const OutroScreen: React.FC = () => {
                 src="/DanceOutro.webm"
                 autoPlay
                 muted
+                loop
                 playsInline
                 style={{
                     position: 'absolute',
@@ -125,6 +137,8 @@ export const OutroScreen: React.FC = () => {
                     pointerEvents: 'auto' // Fondamentale per ricevere il click
                 }}
             />
+            {/* Livello 4: HighScore Overlay */}
+            {showScore && <HighScoreOverlay finalScore={finalScore} />}
         </div>
     );
 };

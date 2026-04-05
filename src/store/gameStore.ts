@@ -119,8 +119,8 @@ const INITIAL_STATE: GameState = {
     isLoading: true,
     showIntroScreen: true,
     countdownValue: null,
-    matchDuration: 90,           // 1:30 minutes
-    matchTimeRemaining: 90,     // Starts at full duration
+    matchDuration: 20,           // 20 seconds
+    matchTimeRemaining: 20,     // Starts at full duration
     isMatchTimerActive: false,
     activePowerUps: [],
     isInfiniteLives: false,

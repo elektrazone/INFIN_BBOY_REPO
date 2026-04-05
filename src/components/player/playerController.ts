@@ -969,6 +969,17 @@ export function setupPlayerController(
       // the physical amount the player model moves across the screen by half.
       cameraTarget.position.x += deltaX * 0.5;
       cameraTarget.position.z += deltaZ;
+      
+      // Dynamic Camera Panning (5 degrees based on lane)
+      // Only do this if not in intro sequence
+      if (!introPlaying) {
+          const PAN_ANGLE = 5 * Math.PI / 180; // 5 degrees in radians
+          // Note: you can change the sign here if the pan direction feels inverted
+          const targetPanOffset = currentLane * PAN_ANGLE; 
+          const baseAlpha = parseFloat(localStorage.getItem("camera_alpha") || CAMERA_DEFAULTS.alpha.toString());
+          const targetAlpha = baseAlpha + targetPanOffset;
+          camera.alpha = BABYLON.Scalar.Lerp(camera.alpha, targetAlpha, 0.08); // 0.08 is lerp speed
+      }
     }
 
     // Always update metadata tracking to prevent position jumps when resuming

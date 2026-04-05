@@ -14,141 +14,36 @@ export const FireworksOverlay: React.FC = () => {
         }).then(() => {
             setInit(true);
         });
+
+        // Setup custom fading fireworks audio
+        const audio = new Audio("/sounds/sfx_fireworks.wav");
+        audio.volume = 1.0; // Pushed to max safe limit (should sit just under the actual music dynamically)
+        audio.loop = true;
+        
+        audio.play().catch(e => console.warn("Audio blocked:", e));
+        
+        const fadeInterval = setInterval(() => {
+            if (audio.volume > 0.02) {
+                audio.volume -= 0.02; // Slower fade (50 steps instead of 16)
+            } else {
+                audio.volume = 0;
+                audio.pause();
+                clearInterval(fadeInterval);
+            }
+        }, 500); // Volume reaches 0 after roughly 25 seconds
+
+        return () => {
+            clearInterval(fadeInterval);
+            audio.pause();
+            audio.src = "";
+        };
     }, []);
 
     const options = {
+        preset: "fireworks",
         fullScreen: { enable: false },
-        background: { color: "transparent" },
-        fpsLimit: 120,
-        interactivity: {
-            detectsOn: "window" as const,
-            events: {
-                onClick: { enable: true, mode: "push" },
-                resize: { enable: true },
-            },
-        },
-        emitters: {
-            direction: "top",
-            life: {
-                count: 0,
-                duration: 0.1,
-                delay: 0.3,
-            },
-            rate: {
-                delay: 0.1,
-                quantity: 1,
-            },
-            size: {
-                width: 80,
-                height: 0,
-                mode: "percent" as const,
-            },
-            position: {
-                x: 50,
-                y: 60,
-            },
-        },
-        particles: {
-            number: { value: 0 },
-            color: { value: "#fff" },
-            shape: { type: "circle" },
-            opacity: { value: 1 },
-            size: {
-                value: { min: 1, max: 2 },
-                animation: {
-                    enable: true,
-                    speed: 5,
-                    sync: false,
-                    startValue: "min" as const,
-                    destroy: "max" as const,
-                },
-            },
-            life: {
-                count: 1,
-                duration: {
-                    value: { min: 1, max: 2 },
-                },
-            },
-            move: {
-                enable: true,
-                gravity: {
-                    enable: true,
-                    acceleration: 9.81,
-                    inverse: true, // Go UP
-                },
-                speed: { min: 10, max: 20 },
-                direction: "top" as const,
-                outModes: {
-                    default: "destroy" as const,
-                    top: "none" as const,
-                },
-                trail: {
-                    enable: true,
-                    length: 20, // Longer trail for rocket
-                    fillColor: "transparent",
-                },
-            },
-            destroy: {
-                mode: "split" as const,
-                split: {
-                    count: 1,
-                    factor: { value: 0.33 },
-                    rate: {
-                        value: { min: 100, max: 200 }, // MORE particles
-                    },
-                    particles: {
-                        stroke: {
-                            width: 0,
-                            color: "#000000",
-                        },
-                        color: {
-                            value: ["#ff595e", "#ffca3a", "#8ac926", "#1982c4", "#6a4c93", "#ffffff"],
-                        },
-                        shape: { type: "circle" },
-                        opacity: {
-                            value: { min: 0.1, max: 1 },
-                            animation: {
-                                enable: true,
-                                speed: 0.2, // Decay SLOWER
-                                sync: false,
-                                startValue: "max" as const,
-                                destroy: "min" as const,
-                            },
-                        },
-                        size: {
-                            value: { min: 1, max: 3 },
-                            animation: {
-                                enable: false,
-                            }
-                        },
-                        life: {
-                            count: 1,
-                            duration: {
-                                value: { min: 2, max: 4 },
-                            },
-                        },
-                        move: {
-                            enable: true,
-                            gravity: {
-                                enable: true,
-                                acceleration: 9.81,
-                                inverse: false, // Fall down
-                            },
-                            speed: { min: 5, max: 15 },
-                            direction: "none" as const,
-                            random: true,
-                            outModes: "destroy" as const,
-                            decay: 0.05,
-                            trail: {
-                                enable: true,
-                                length: 40, // VERY LONG trails for explosion
-                                fillColor: "transparent",
-                            }
-                        },
-                    },
-                },
-            },
-        },
+        background: { color: "#000000" },
+        sounds: { enable: false } // Disable native preset pops
     };
 
     if (!init) {
@@ -163,7 +58,8 @@ export const FireworksOverlay: React.FC = () => {
             width: '100%',
             height: '100%',
             pointerEvents: 'none',
-            zIndex: 1
+            zIndex: 5,
+            mixBlendMode: 'screen' // ✨ MAGICAL VFX TRICK: This makes all black pixels completely invisible!
         }}>
             <Particles
                 id="tsparticles"

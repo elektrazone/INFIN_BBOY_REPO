@@ -1,0 +1,260 @@
+/* src/styles/highScore.css */
+
+.highscore-overlay-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 15, 30, 0.25);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 2500; /* Must be above OutroScreen layers */
+    pointer-events: none; /* Allow clicks to pass through to Play Again button */
+    animation: hs-fade-in 0.5s ease-out forwards;
+}
+
+@keyframes hs-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.highscore-container {
+    width: 85%;
+    max-width: 500px;
+    background: rgba(20, 25, 45, 0.45);
+    border: 2px solid rgba(255, 215, 0, 0.4);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 215, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform: translateY(20px);
+    pointer-events: auto; /* To capture input inside the container */
+    animation: hs-slide-up 0.5s ease-out forwards;
+}
+
+@keyframes hs-slide-up {
+    to { transform: translateY(0); }
+}
+
+.highscore-title {
+    font-family: 'Inter', 'Impact', sans-serif;
+    color: #ffd700;
+    font-size: 32px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.6), 0 2px 4px rgba(0,0,0,1);
+    text-align: center;
+}
+
+/* Name Entry Section */
+.hs-entry-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.hs-entry-label {
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+}
+
+.hs-fake-input {
+    background: rgba(0, 0, 0, 0.6);
+    border: 2px solid #ff8c00;
+    border-radius: 8px;
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: 24px;
+    font-weight: bold;
+    padding: 12px 20px;
+    width: 80%;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    margin-bottom: 20px;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.hs-placeholder {
+    color: rgba(255, 255, 255, 0.3);
+    letter-spacing: 2px;
+}
+
+.hs-cursor {
+    animation: blink 1s step-end infinite;
+    color: #ffd700;
+}
+
+@keyframes blink {
+    50% { opacity: 0; }
+}
+
+/* Virtual Keyboard */
+.hs-virtual-keyboard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 450px;
+}
+
+.hs-vk-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.hs-vk-key {
+    background: rgba(40, 50, 80, 0.8);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-weight: bold;
+    font-size: 16px;
+    width: 38px;
+    height: 38px;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+    transition: all 0.1s;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.hs-vk-key:active {
+    transform: translateY(2px);
+    background: rgba(255, 215, 0, 0.2);
+    box-shadow: 0 2px 3px rgba(0,0,0,0.4);
+}
+
+.hs-vk-actions {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    justify-content: center;
+}
+
+.hs-vk-btn {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 16px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-transform: uppercase;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+    transition: all 0.1s;
+    user-select: none;
+    -webkit-user-select: none;
+    flex: 1;
+    max-width: 150px;
+}
+
+.hs-vk-del {
+    background: rgba(220, 20, 60, 0.8);
+    border: 1px solid #ff4d4d;
+    color: #fff;
+}
+
+.hs-vk-save {
+    background: linear-gradient(180deg, #32cd32 0%, #228b22 100%);
+    border: 1px solid #7cfc00;
+    color: #fff;
+}
+
+.hs-vk-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 3px rgba(0,0,0,0.4);
+}
+
+/* Leaderboard List */
+.hs-list {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.hs-row {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    padding: 8px 12px;
+    border-left: 3px solid transparent;
+}
+
+.hs-row.is-current {
+    background: rgba(255, 215, 0, 0.15);
+    border-left-color: #ffd700;
+}
+
+.hs-rank {
+    color: rgba(255, 255, 255, 0.5);
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+    width: 30px;
+}
+
+.hs-name {
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: 18px;
+    font-weight: bold;
+    flex-grow: 1;
+    text-transform: uppercase;
+}
+
+.hs-score {
+    color: #ffd700;
+    font-family: 'Inter', sans-serif;
+    font-size: 20px;
+    font-weight: 900;
+    text-shadow: 0 1px 2px #000;
+}
+
+.hs-empty {
+    color: rgba(255, 255, 255, 0.2);
+    font-style: italic;
+}
+
+/* Fix Outro Screen Button to be visible under HighScore if needed, 
+   though HighScore will likely take priority. */
+.hs-close-btn {
+    margin-top: 20px;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    text-decoration: underline;
+    transition: color 0.2s;
+}
+
+.hs-close-btn:hover {
+    color: #fff;
+}
