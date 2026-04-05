@@ -6,7 +6,8 @@ const VIRTUAL_KEYBOARD = [
     'H', 'I', 'J', 'K', 'L', 'M', 'N',
     'O', 'P', 'Q', 'R', 'S', 'T', 'U',
     'V', 'W', 'X', 'Y', 'Z', '0', '1', 
-    '2', '3', '4', '5', '6', '7', '8', '9'
+    '2', '3', '4', '5', '6', '7', '8', '9',
+    ' ' // Added Space for Cheat Codes
 ];
 import '../../styles/highScore.css';
 
@@ -27,9 +28,34 @@ export const HighScoreOverlay: React.FC<HighScoreOverlayProps> = ({ finalScore }
     }, [finalScore]);
 
     const handleSubmit = () => {
-        if (playerName.trim() === '') return;
+        const inputName = playerName.trim().toUpperCase();
+        if (inputName === '') return;
 
-        highScoreService.saveScore(playerName.trim(), finalScore);
+        // --- ADMIN CHEAT CODES ---
+        if (inputName === 'CLEAR SCORE') {
+            highScoreService.clearAllScores();
+            setScores(highScoreService.getHighScores());
+            setPlayerName('');
+            alert("🧹 All high scores wiped from leaderboard!");
+            return; // Stay on the screen so they can still submit their actual score
+        }
+
+        if (inputName === 'DELETE PLAYER') {
+            const nameToDel = window.prompt("Enter EXACT initials/name of player to delete (e.g. DARNELL):");
+            if (nameToDel && nameToDel.trim() !== "") {
+                highScoreService.deleteScore(nameToDel);
+                setScores(highScoreService.getHighScores());
+                alert(`🗑️ Deleted player: ${nameToDel.toUpperCase()}`);
+            }
+            setPlayerName('');
+            return;
+        }
+
+        // --- NORMAL SAVE ---
+        // Normal save (limit to 7 characters as per classic arcade limits)
+        const finalName = inputName.slice(0, 7);
+
+        highScoreService.saveScore(finalName, finalScore);
         
         // Refresh scores
         setScores(highScoreService.getHighScores());
@@ -39,7 +65,8 @@ export const HighScoreOverlay: React.FC<HighScoreOverlayProps> = ({ finalScore }
 
     const handleKeyPress = (key: string) => {
         setPlayerName(prev => {
-            if (prev.length < 7) return prev + key;
+            // Allow up to 15 characters to accommodate typing cheat codes
+            if (prev.length < 15) return prev + key;
             return prev;
         });
     };
@@ -83,8 +110,14 @@ export const HighScoreOverlay: React.FC<HighScoreOverlayProps> = ({ finalScore }
                         <div className="hs-virtual-keyboard">
                             <div className="hs-vk-grid">
                                 {VIRTUAL_KEYBOARD.map(char => (
-                                    <button key={char} type="button" className="hs-vk-key" onClick={() => handleKeyPress(char)}>
-                                        {char}
+                                    <button 
+                                        key={char === ' ' ? 'SPACE' : char} 
+                                        type="button" 
+                                        className="hs-vk-key" 
+                                        style={char === ' ' ? { width: '82px' } : {}}
+                                        onClick={() => handleKeyPress(char)}
+                                    >
+                                        {char === ' ' ? '␣' : char}
                                     </button>
                                 ))}
                             </div>

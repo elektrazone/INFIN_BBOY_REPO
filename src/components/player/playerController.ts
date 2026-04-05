@@ -527,7 +527,15 @@ export function setupPlayerController(
     // ------------------------------------------
     // SAVED OFFSET FOR CAMERA (Prevent overhead snap)
     // ------------------------------------------
-    let savedYOffset: number | null = null;
+    // NOTE: Removed 'let' to correctly reuse the module-scoped savedYOffset!
+    savedYOffset = null;
+
+    // We MUST save the offset for ALL fall states (obstacles and gaps)
+    // to prevent the camera from staying inappropriately high/low on Getup respawn.
+    if (cameraTarget && playerRoot) {
+      savedYOffset = cameraTarget.position.y - playerRoot.position.y;
+      console.log(`💾 Saved Camera Y Offset for respawn: ${savedYOffset}`);
+    }
 
     if (!hitObstacle) {
       // It's a gap! Enable physical falling
@@ -535,13 +543,6 @@ export function setupPlayerController(
       // Also trigger a jump motion so gravity logic picks it up
       jumpMotion.velocity = -50;
       console.log("🕳️ Falling into gap!");
-
-      // Save the current vertical offset between target and player
-      // logic: TargetY = PlayerY + Offset  =>  Offset = TargetY - PlayerY
-      if (cameraTarget && playerRoot) {
-        savedYOffset = cameraTarget.position.y - playerRoot.position.y;
-        console.log(`💾 Saved Camera Y Offset: ${savedYOffset}`);
-      }
     }
   }
 
@@ -954,8 +955,8 @@ export function setupPlayerController(
 
       // Follow Y even if falling in gap, BUT with a damping/limit? 
       // Actually, if it looks like "zooming out" when they die, we should follow them.
-      // For gap falls in gameplay we detatched, but for DEATH we should follow.
-      const shouldFollowY = !isFallingInGap || (currentGameState === "gameover");
+      // For gap falls in gameplay we detatched. We should ALSO detach for DEATH so the screen stays on the street, not the empty skybox!
+      const shouldFollowY = !isFallingInGap;
 
       if (shouldFollowY) {
         deltaY = playerRoot.position.y - (playerRoot.metadata?.lastY ?? playerRoot.position.y);
@@ -971,8 +972,8 @@ export function setupPlayerController(
       cameraTarget.position.z += deltaZ;
       
       // Dynamic Camera Panning (5 degrees based on lane)
-      // Only do this if not in intro sequence
-      if (!introPlaying) {
+      // Only do this if not in intro sequence and zoom observer is done
+      if (!introPlaying && !activeZoomObserver) {
           const PAN_ANGLE = 5 * Math.PI / 180; // 5 degrees in radians
           // Note: you can change the sign here if the pan direction feels inverted
           const targetPanOffset = currentLane * PAN_ANGLE; 
@@ -1081,6 +1082,9 @@ export function setupPlayerController(
     const startBeta = camera.beta;
     const startFov = camera.fov;
 
+    // Capture constant start positions for target Y so we don't double-lerp and fight lateral movements
+    const startTargetY = cameraTarget ? cameraTarget.position.y : CAMERA_DEFAULTS.targetY;
+
     // Get Gameplay (End) values from localStorage or defaults (Shift+C)
     const endAlpha = parseFloat(localStorage.getItem("camera_alpha") || CAMERA_DEFAULTS.alpha.toString());
     const endBeta = parseFloat(localStorage.getItem("camera_beta") || CAMERA_DEFAULTS.beta.toString());
@@ -1115,9 +1119,9 @@ export function setupPlayerController(
       camera.fov = startFov + (endFov - startFov) * easeT;
 
       if (cameraTarget) {
-        cameraTarget.position.x = BABYLON.Scalar.Lerp(cameraTarget.position.x, endTargetX, easeT);
-        cameraTarget.position.y = BABYLON.Scalar.Lerp(cameraTarget.position.y, endTargetY, easeT);
-        cameraTarget.position.z = BABYLON.Scalar.Lerp(cameraTarget.position.z, endTargetZ, easeT);
+        // ONLY lerp the Y height mathematically. 
+        // We leave X and Z alone here so the main track engine deltaX can properly let the player dodge side-to-side dynamically!
+        cameraTarget.position.y = startTargetY + (endTargetY - startTargetY) * easeT;
       }
 
       if (t >= 1) {
@@ -1127,7 +1131,8 @@ export function setupPlayerController(
         camera.alpha = endAlpha;
         camera.beta = endBeta;
         camera.fov = endFov;
-        if (cameraTarget) cameraTarget.position.set(endTargetX, endTargetY, endTargetZ);
+        // Upon complete zoom, don't snap the X/Z because the player might have dodged 10 feet to the right!
+        if (cameraTarget) cameraTarget.position.y = endTargetY;
         console.log("✅ Camera Transition Complete");
       }
     });

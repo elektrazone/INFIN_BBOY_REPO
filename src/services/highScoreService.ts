@@ -72,5 +72,35 @@ export const highScoreService = {
         } catch (e) {
             console.error("Error saving high score:", e);
         }
+    },
+
+    /**
+     * Admin tool: Clear all high scores
+     */
+    clearAllScores(): void {
+        try {
+            localStorage.removeItem(STORAGE_KEY);
+            console.log("All high scores wiped!");
+        } catch (e) {
+            console.error("Error clearing high scores:", e);
+        }
+    },
+
+    /**
+     * Admin tool: Delete a specific player's score matching exactly their name
+     */
+    deleteScore(playerName: string): void {
+        const currentScores = this.getHighScores();
+        const upperNameToMatch = playerName.trim().toUpperCase();
+
+        // Keep all scores EXCEPT the exact name matched
+        const newScores = currentScores.filter(s => s.name !== upperNameToMatch);
+
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(newScores));
+            console.log(`Deleted player ${upperNameToMatch} from high scores.`);
+        } catch (e) {
+            console.error("Error deleting high score:", e);
+        }
     }
 };
