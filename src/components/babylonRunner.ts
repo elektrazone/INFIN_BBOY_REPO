@@ -62,11 +62,9 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
       return;
     }
 
-    // Default adaptive scaling (capping to ~1080p performance)
-    const resolutionScale = Math.max(1, canvas.height / 1080);
-    const finalScaling = Math.min(2.5, resolutionScale);
-    engine.setHardwareScalingLevel(finalScaling);
-    console.log(`📉 DEFAULT ADAPTIVE SCALING: Level ${finalScaling.toFixed(2)}`);
+    // Default 4K / High Res
+    engine.setHardwareScalingLevel(1.0);
+    console.log(`📉 DEFAULT SCALING (4K/HIGH): Level 1.0`);
   };
 
   // --------------------------------------------
