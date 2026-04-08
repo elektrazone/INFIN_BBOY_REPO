@@ -6,7 +6,7 @@ export interface HighScore {
     timestamp: number;
 }
 
-const STORAGE_KEY = 'infin_bboy_highscores';
+const STORAGE_KEY = 'burger_rush_highscores';
 const MAX_SCORES = 8;
 
 export const highScoreService = {

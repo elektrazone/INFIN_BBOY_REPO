@@ -42,7 +42,6 @@ export const FireworksOverlay: React.FC = () => {
     const options = {
         preset: "fireworks",
         fullScreen: { enable: false },
-        background: { color: "#000000" },
         sounds: { enable: false } // Disable native preset pops
     };
 
@@ -58,7 +57,7 @@ export const FireworksOverlay: React.FC = () => {
             width: '100%',
             height: '100%',
             pointerEvents: 'none',
-            zIndex: 5,
+            zIndex: 15,
             mixBlendMode: 'screen' // ✨ MAGICAL VFX TRICK: This makes all black pixels completely invisible!
         }}>
             <Particles

@@ -69,7 +69,8 @@ export const OutroScreen: React.FC = () => {
                     height: '100%',
                     objectFit: 'fill',
                     pointerEvents: 'none',
-                    zIndex: 2 // Layer 2: Above VFX
+                    zIndex: 10, // Layer 10: On top of videos and fireworks (as a frame)
+                    opacity: 1.0 
                 }}
             />
 
@@ -88,7 +89,7 @@ export const OutroScreen: React.FC = () => {
                     height: '100%',
                     objectFit: 'contain',
                     pointerEvents: 'none',
-                    zIndex: 3, // Layer 3: Above Overlay
+                    zIndex: 11, // Layer 11: Above Overlay
                     // Translate usa ora le percentuali (%) invece dei px
                     transform: `translate(calc(-50% + ${FLAG_CONFIG.offsetX}%), calc(-50% + ${FLAG_CONFIG.offsetY}%)) scale(${FLAG_CONFIG.scale})`
                 }}
@@ -109,7 +110,7 @@ export const OutroScreen: React.FC = () => {
                     height: '100%',
                     objectFit: 'contain',
                     pointerEvents: 'none',
-                    zIndex: 4, // Layer 4: Above Flag
+                    zIndex: 12, // Layer 12: Above Flag and Overlay
                     // Translate usa ora le percentuali (%) invece dei px
                     transform: `translate(calc(-50% + ${VIDEO_CONFIG.offsetX}%), calc(-50% + ${VIDEO_CONFIG.offsetY}%)) scale(${VIDEO_CONFIG.scale})`
                 }}
