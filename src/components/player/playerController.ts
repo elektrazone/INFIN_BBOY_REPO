@@ -1342,22 +1342,51 @@ export function setupPlayerController(
   // TOUCH & POINTER INPUT
   // ------------------------------------------
   
+  const touchState = { startX: 0, startY: 0, startTime: 0, isDragging: false, handledByPointer: false };
+  const SWIPE_THRESHOLD = 50;
+  const TAP_THRESHOLD = 200;
+  const SWIPE_MAX_TIME = 500;
+
   function handleTouchStart(event: TouchEvent) {
-    // Input natively handled by pointer events (taps) now
+    if (!isGameActive() || isVictorySequenceActive) return;
+    const touch = event.touches[0];
+    if (!touch) return;
+    touchState.startX = touch.clientX; touchState.startY = touch.clientY;
+    touchState.startTime = Date.now(); touchState.isDragging = true;
+    touchState.handledByPointer = false;
   }
 
   function handleTouchMove(event: TouchEvent) {
-    // Input natively handled by pointer events (taps) now
+    if (!isGameActive() || !touchState.isDragging || isVictorySequenceActive) return;
   }
 
   function handleTouchEnd(event: TouchEvent) {
-    // Input natively handled by pointer events (taps) now
+    if (!isGameActive() || !touchState.isDragging || isVictorySequenceActive) return;
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+    const deltaX = touch.clientX - touchState.startX;
+    const deltaY = touch.clientY - touchState.startY;
+    const deltaTime = Date.now() - touchState.startTime;
+    touchState.isDragging = false;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    // Swipe-only: taps do nothing, require deliberate swipe gesture
+    if (distance >= SWIPE_THRESHOLD && deltaTime < SWIPE_MAX_TIME) {
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        // Horizontal swipe: lane switch
+        if (deltaX > 0) { performLaneSwitch(-1); } else { performLaneSwitch(1); }
+      } else {
+        // Vertical swipe: up = jump, down = slide
+        if (deltaY < 0) { keyState.jump = true; setTimeout(() => (keyState.jump = false), 100); }
+        else { keyState.slide = true; setTimeout(() => (keyState.slide = false), 500); }
+      }
+    }
   }
 
   function handlePointerDown(event: PointerEvent) {
     if (!isGameActive() || isVictorySequenceActive) return;
-    
-    // We now allow touch pointers as well to enable tapping on mobile
+    // Touch input is swipe-only — skip pointer handling for touch events
+    if (event.pointerType === 'touch') return;
     const canvas = scene.getEngine().getRenderingCanvas();
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
