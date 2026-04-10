@@ -69,9 +69,9 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
       return;
     }
 
-    // Default Performance Mode (for integrated GPUs / NUCs)
-    engine.setHardwareScalingLevel(1.5);
-    console.log(`📉 DEFAULT SCALING (PERFORMANCE): Level 1.5 (Smooth Frame Rate)`);
+    // Default 4K / High Resolution Mode (Optimized)
+    engine.setHardwareScalingLevel(1.0);
+    console.log(`🚀 DEFAULT SCALING (4K/HIGH): Level 1.0 (Native CSS Pixels)`);
   };
 
   // --------------------------------------------

@@ -175,6 +175,9 @@ export function createFallingCubeRoad(
     // Indices for face 4 (Top) are 24 to 29.
     new BABYLON.SubMesh(1, 0, sourceCube.getTotalVertices(), 24, 6, sourceCube);
 
+    sourceCube.alwaysSelectAsActiveMesh = true;
+    sourceCube.doNotSyncBoundingInfo = true;
+
     // Re-use sourceCube for both "red" and "black" logic if needed, 
     // but the user wants layered textures like the illustration, which doesn't necessarily need the checkerboard colors anymore.
     // However, to keep the logic consistent, I'll use the same source for both or remove the choice.
@@ -222,6 +225,9 @@ export function createFallingCubeRoad(
     new BABYLON.SubMesh(2, 0, sourceDebris.getTotalVertices(), 30, 6, sourceDebris);  // Bottom (Pure Dirt)
     new BABYLON.SubMesh(1, 0, sourceDebris.getTotalVertices(), 24, 6, sourceDebris);  // Top (Pure Asphalt)
 
+    sourceDebris.alwaysSelectAsActiveMesh = true;
+    sourceDebris.doNotSyncBoundingInfo = true;
+
     interface DebrisPiece {
         mesh: BABYLON.InstancedMesh;
         active: boolean;
@@ -241,6 +247,8 @@ export function createFallingCubeRoad(
         if (debrisPool.length < DEBRIS_CONFIG.maxActiveDebris) {
             const mesh = sourceDebris.createInstance(`debris_${debrisPool.length}`);
             mesh.isVisible = false;
+            mesh.alwaysSelectAsActiveMesh = true;
+            mesh.doNotSyncBoundingInfo = true;
             const piece: DebrisPiece = {
                 mesh,
                 active: false,
@@ -419,6 +427,8 @@ export function createFallingCubeRoad(
                     const instance = sourceCube.createInstance(`cube_${seg}_${gx}_${gz}`);
                     instance.position = new BABYLON.Vector3(x, cubeY, z);
                     instance.receiveShadows = true;
+                    instance.alwaysSelectAsActiveMesh = true;
+                    instance.doNotSyncBoundingInfo = true;
 
                     // Add to shadow caster
                     shadowGenerator.addShadowCaster(instance, true);

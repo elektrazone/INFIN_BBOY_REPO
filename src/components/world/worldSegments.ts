@@ -204,6 +204,8 @@ export function createWorldSegments(
       inst.parent = group;
       applyTransform(inst, m);
       inst.receiveShadows = true;
+      inst.alwaysSelectAsActiveMesh = true;
+      inst.doNotSyncBoundingInfo = true;
       shadowGenerator.addShadowCaster(inst, true);
     });
 
@@ -236,6 +238,8 @@ export function createWorldSegments(
         }
         m.isVisible = false;
         m.setEnabled(false);
+        m.alwaysSelectAsActiveMesh = true;
+        m.doNotSyncBoundingInfo = true;
       });
 
       const base = new BABYLON.TransformNode("buildSeg-0", scene);
@@ -353,8 +357,9 @@ export function createWorldSegments(
     sidewalkBase.material = sidewalkMat;
     sidewalkBase.receiveShadows = true;
     sidewalkBase.isVisible = false; // Hide base mesh
+    sidewalkBase.alwaysSelectAsActiveMesh = true;
+    sidewalkBase.doNotSyncBoundingInfo = true;
 
-    sidewalkBase.isVisible = false; // Hide base mesh
     // sidewalkMat.freeze(); // Optimize: frozen removed for mobile stability
 
     for (let i = 0; i < segmentCount; i++) {
@@ -362,12 +367,16 @@ export function createWorldSegments(
       const leftInstance = sidewalkBase.createInstance(`sidewalk_left_${i}`);
       leftInstance.position.set(leftSidewalkX, sidewalkY, -i * sidewalkSpacing);
       leftInstance.checkCollisions = false; // Optim: collision handled elsewhere if needed
+      leftInstance.alwaysSelectAsActiveMesh = true;
+      leftInstance.doNotSyncBoundingInfo = true;
       sidewalkSegments.push(leftInstance);
 
       // Right sidewalk instance
       const rightInstance = sidewalkBase.createInstance(`sidewalk_right_${i}`);
       rightInstance.position.set(rightSidewalkX, sidewalkY, -i * sidewalkSpacing);
       rightInstance.checkCollisions = false;
+      rightInstance.alwaysSelectAsActiveMesh = true;
+      rightInstance.doNotSyncBoundingInfo = true;
       sidewalkSegments.push(rightInstance);
     }
   }
@@ -418,6 +427,8 @@ export function createWorldSegments(
     stripeBase.material = stripeMat;
     stripeBase.isVisible = false;
     stripeBase.isPickable = false;
+    stripeBase.alwaysSelectAsActiveMesh = true;
+    stripeBase.doNotSyncBoundingInfo = true;
 
     // Create stripe instances using GPU instancing
     const stripeCount = Math.floor(extensionLength / 60);
@@ -425,6 +436,8 @@ export function createWorldSegments(
       const stripe = stripeBase.createInstance(`stripe_${i}`);
       stripe.position.set(0, 0.1, startZ - 30 - i * 60);
       stripe.isPickable = false;
+      stripe.alwaysSelectAsActiveMesh = true;
+      stripe.doNotSyncBoundingInfo = true;
       stripe.freezeWorldMatrix(); // Freeze each instance
     }
   }
@@ -473,6 +486,7 @@ export function createWorldSegments(
         meshes.push(node);
       }
       for (const mesh of meshes) {
+        mesh.doNotSyncBoundingInfo = true;
         mesh.receiveShadows = true;
         shadowGenerator.addShadowCaster(mesh, true);
       }
@@ -549,13 +563,16 @@ export function createWorldSegments(
     markerBase.material = markerMat;
     markerBase.receiveShadows = true;
     markerBase.isVisible = false; // Hide base mesh
+    markerBase.alwaysSelectAsActiveMesh = true;
+    markerBase.doNotSyncBoundingInfo = true;
 
-    markerBase.isVisible = false; // Hide base mesh
     // markerMat.freeze(); // Optimize: frozen removed for mobile stability
 
     for (let i = 0; i < numMarkers; i++) {
       const marker = markerBase.createInstance(`roadMarker_${i}`);
       marker.position.set(0, markerY, -i * markerSpacing);
+      marker.alwaysSelectAsActiveMesh = true;
+      marker.doNotSyncBoundingInfo = true;
       // Shadows for tiny road markers are expensive and barely visible, disable for instances
       // marker.receiveShadows = false; 
       roadMarkers.push(marker);

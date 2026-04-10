@@ -191,6 +191,11 @@ export function createObstacleSystem(
     mesh.metadata = { obstacleType: type, variant: variantUsed, isHamburgerVariant };
     shadowGenerator.addShadowCaster(mesh, true);
 
+    mesh.doNotSyncBoundingInfo = true;
+    if (collisionMeshes) {
+        collisionMeshes.forEach(col => col.doNotSyncBoundingInfo = true);
+    }
+
     const created: ObstacleInstance = {
       mesh,
       collisionMeshes: collisionMeshes ?? [mesh],
