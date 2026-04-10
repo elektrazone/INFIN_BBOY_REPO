@@ -971,16 +971,7 @@ export function setupPlayerController(
       cameraTarget.position.x += deltaX * 0.5;
       cameraTarget.position.z += deltaZ;
       
-      // Dynamic Camera Panning (5 degrees based on lane)
-      // Only do this if not in intro sequence and zoom observer is done
-      if (!introPlaying && !activeZoomObserver) {
-          const PAN_ANGLE = 5 * Math.PI / 180; // 5 degrees in radians
-          // Note: you can change the sign here if the pan direction feels inverted
-          const targetPanOffset = currentLane * PAN_ANGLE; 
-          const baseAlpha = parseFloat(localStorage.getItem("camera_alpha") || CAMERA_DEFAULTS.alpha.toString());
-          const targetAlpha = baseAlpha + targetPanOffset;
-          camera.alpha = BABYLON.Scalar.Lerp(camera.alpha, targetAlpha, 0.08); // 0.08 is lerp speed
-      }
+      // Dynamic Camera Panning removed (requested by user)
     }
 
     // Always update metadata tracking to prevent position jumps when resuming
@@ -1350,51 +1341,23 @@ export function setupPlayerController(
   // ------------------------------------------
   // TOUCH & POINTER INPUT
   // ------------------------------------------
-  const touchState = { startX: 0, startY: 0, startTime: 0, isDragging: false, handledByPointer: false };
-  const SWIPE_THRESHOLD = 50;
-  const TAP_THRESHOLD = 200;
-  const SWIPE_MAX_TIME = 500;
-
+  
   function handleTouchStart(event: TouchEvent) {
-    if (!isGameActive() || isVictorySequenceActive) return;
-    const touch = event.touches[0];
-    if (!touch) return;
-    touchState.startX = touch.clientX; touchState.startY = touch.clientY;
-    touchState.startTime = Date.now(); touchState.isDragging = true;
-    touchState.handledByPointer = false;
+    // Input natively handled by pointer events (taps) now
   }
 
   function handleTouchMove(event: TouchEvent) {
-    if (!isGameActive() || !touchState.isDragging || isVictorySequenceActive) return;
+    // Input natively handled by pointer events (taps) now
   }
 
   function handleTouchEnd(event: TouchEvent) {
-    if (!isGameActive() || !touchState.isDragging || isVictorySequenceActive) return;
-    const touch = event.changedTouches[0];
-    if (!touch) return;
-    const deltaX = touch.clientX - touchState.startX;
-    const deltaY = touch.clientY - touchState.startY;
-    const deltaTime = Date.now() - touchState.startTime;
-    touchState.isDragging = false;
-    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-
-    // Swipe-only: taps do nothing, require deliberate swipe gesture
-    if (distance >= SWIPE_THRESHOLD && deltaTime < SWIPE_MAX_TIME) {
-      if (Math.abs(deltaX) > Math.abs(deltaY)) {
-        // Horizontal swipe: lane switch
-        if (deltaX > 0) { performLaneSwitch(-1); } else { performLaneSwitch(1); }
-      } else {
-        // Vertical swipe: up = jump, down = slide
-        if (deltaY < 0) { keyState.jump = true; setTimeout(() => (keyState.jump = false), 100); }
-        else { keyState.slide = true; setTimeout(() => (keyState.slide = false), 500); }
-      }
-    }
+    // Input natively handled by pointer events (taps) now
   }
 
   function handlePointerDown(event: PointerEvent) {
     if (!isGameActive() || isVictorySequenceActive) return;
-    // Touch input is swipe-only — skip pointer handling for touch events
-    if (event.pointerType === 'touch') return;
+    
+    // We now allow touch pointers as well to enable tapping on mobile
     const canvas = scene.getEngine().getRenderingCanvas();
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
