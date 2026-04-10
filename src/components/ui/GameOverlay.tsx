@@ -45,6 +45,15 @@ export const GameOverlay: React.FC = () => {
         window.location.hash === '#debug=zones' ||
         window.location.hash.includes('debug=zones');
 
+    const handleSafeReload = () => {
+        if (typeof (window as any).performGameCleanup === 'function') {
+            (window as any).performGameCleanup();
+        }
+        setTimeout(() => {
+            window.location.reload();
+        }, 50);
+    };
+
     if (isDebugZones) {
         console.log("🛠️ TOUCH ZONES DEBUG ACTIVE");
     }
@@ -133,7 +142,7 @@ export const GameOverlay: React.FC = () => {
                                 src="/PlayAgainButton.png"
                                 alt="Play Again"
                                 className="gameover-play-again"
-                                onClick={() => window.location.reload()}
+                                onClick={handleSafeReload}
                             />
                         </div>
                     )}

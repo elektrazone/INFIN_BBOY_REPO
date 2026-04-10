@@ -172,7 +172,7 @@ const PerformanceMonitor: React.FC = () => {
         pointerEvents: 'auto',
         userSelect: 'none',
         minWidth: isExpanded ? '280px' : '140px',
-        backdropFilter: 'blur(4px)',
+        backgroundColor: 'rgba(0, 0, 0, 0.9)', /* Solid background for performance */
         border: '1px solid rgba(255, 255, 255, 0.1)',
         cursor: 'pointer',
     };

@@ -44,6 +44,7 @@ export function createAudioManager(): AudioManagerController {
     let currentMusic: HTMLAudioElement | null = null;
     let musicVolume = 0.5;
     let sfxVolume = 0.7;
+    let activeAudioContext: any = null;
 
     // Cache for loaded audio elements
     const audioCache: Map<string, HTMLAudioElement> = new Map();
@@ -75,6 +76,7 @@ export function createAudioManager(): AudioManagerController {
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
         if (AudioContextClass) {
             const ctx = new AudioContextClass();
+            activeAudioContext = ctx;
             const buffer = ctx.createBuffer(1, 1, 22050);
             const source = ctx.createBufferSource();
             source.buffer = buffer;
@@ -224,7 +226,13 @@ export function createAudioManager(): AudioManagerController {
             audio.src = "";
         });
         audioCache.clear();
-        console.log("🔇 Audio manager disposed");
+        
+        if (activeAudioContext && typeof activeAudioContext.close === 'function') {
+            activeAudioContext.close();
+            activeAudioContext = null;
+        }
+        
+        console.log("🔇 Audio manager disposed and Contexts closed");
     }
 
     console.log("🔊 Audio manager initialized (HTML5 Audio)");

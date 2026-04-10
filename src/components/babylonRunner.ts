@@ -62,9 +62,16 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
       return;
     }
 
-    // Default 4K / High Res
-    engine.setHardwareScalingLevel(1.0);
-    console.log(`📉 DEFAULT SCALING (4K/HIGH): Level 1.0`);
+    if (quality === "med" || quality === "medium") {
+      // 1.5 = Slightly reduced resolution
+      engine.setHardwareScalingLevel(1.5);
+      console.log("⚖️ MEDIUM-RES MODE: Scaling set to 1.5");
+      return;
+    }
+
+    // Default Performance Mode (for integrated GPUs / NUCs)
+    engine.setHardwareScalingLevel(1.5);
+    console.log(`📉 DEFAULT SCALING (PERFORMANCE): Level 1.5 (Smooth Frame Rate)`);
   };
 
   // --------------------------------------------
@@ -83,6 +90,7 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
       height = width / aspect;
     }
 
+    // Reverted the explicit size assignment here as removing it caused layout recalculation thrashing
     canvas.width = width;
     canvas.height = height;
     canvas.style.width = `${width}px`;
@@ -549,7 +557,9 @@ Target: (${camera.target.x.toFixed(1)}, ${camera.target.y.toFixed(1)}, ${camera.
   // Add listener for VFX overlay
   window.addEventListener("stopRenderLoop", stopRenderHandler);
 
-  window.addEventListener("beforeunload", () => {
+  // Global cleanup function to be called before reloading the page to prevent memory leaks (WebGL, AudioContext)
+  (window as any).performGameCleanup = () => {
+    console.log("🧹 Performing explicit game cleanup...");
     window.removeEventListener("stopRenderLoop", stopRenderHandler);
     window.removeEventListener("resize", onResize);
     window.removeEventListener("keydown", onKeyDown);
@@ -563,12 +573,17 @@ Target: (${camera.target.x.toFixed(1)}, ${camera.target.y.toFixed(1)}, ${camera.
     environment.dispose();
     player.dispose();
     uiManager.dispose();
+    audioManager.dispose(); // CRITICAL: Stop audio and close AudioContexts
 
     BABYLON.Logger.ClearLogCache();
     BABYLON.Logger.LogLevels = BABYLON.Logger.AllLogLevel;
 
     engine?.dispose();
-  });
+    console.log("✅ Cleanup complete.");
+  };
+
+  // Still hook it up to beforeunload just in case the browser or user refreshes normally
+  window.addEventListener("beforeunload", (window as any).performGameCleanup);
 
   // Expose engine/scene globally for performance monitoring
   (window as any).__BABYLON_ENGINE__ = engine;

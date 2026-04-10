@@ -196,9 +196,7 @@ body {
 }
 
 .gameover-scorecard {
-  background: rgba(20, 30, 60, 0.7);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(10, 15, 30, 0.9); /* Increased opacity to compensate for lack of blur */
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 16px;
   padding: 24px 48px;

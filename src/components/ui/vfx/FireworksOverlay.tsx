@@ -39,7 +39,7 @@ export const FireworksOverlay: React.FC = () => {
         };
     }, []);
 
-    const options = {
+    const options: any = {
         preset: "fireworks",
         fullScreen: { enable: false },
         sounds: { enable: false } // Disable native preset pops

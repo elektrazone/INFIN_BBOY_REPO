@@ -52,6 +52,16 @@ export const OutroScreen: React.FC = () => {
         return () => clearTimeout(timer);
     }, []);
 
+    const handleSafeReload = () => {
+        if (typeof (window as any).performGameCleanup === 'function') {
+            (window as any).performGameCleanup();
+        }
+        // Small delay to let disposal finish sending webgl commands
+        setTimeout(() => {
+            window.location.reload();
+        }, 50);
+    };
+
     return (
         <div className="outro-screen">
             {/* Livello 1: VFX */}
@@ -120,7 +130,7 @@ export const OutroScreen: React.FC = () => {
             <img
                 src="/PlayAgainButton.png"
                 alt="Restart"
-                onClick={() => window.location.reload()}
+                onClick={handleSafeReload}
                 style={{
                     position: 'absolute',
                     // Posizionamento
