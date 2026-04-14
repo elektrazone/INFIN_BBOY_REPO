@@ -55,10 +55,10 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
     }
 
     if (quality === "4k" || quality === "high") {
-      // 1.0 = Standard CSS resolution (1:1 with CSS pixels)
-      // On 4K screens, this looks very sharp.
-      engine.setHardwareScalingLevel(1.0);
-      console.log("🚀 HIGH-RES MODE (4K/HIGH): Scaling set to 1.0");
+      // 1.25 = Slight reduction from 1:1 CSS resolution
+      // Takes the edge off 4K rendering while staying sharp
+      engine.setHardwareScalingLevel(1.25);
+      console.log("🚀 HIGH-RES MODE (4K/HIGH): Scaling set to 1.25");
       return;
     }
 
@@ -69,9 +69,9 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
       return;
     }
 
-    // Default 4K / High Resolution Mode (Optimized)
-    engine.setHardwareScalingLevel(1.0);
-    console.log(`🚀 DEFAULT SCALING (4K/HIGH): Level 1.0 (Native CSS Pixels)`);
+    // Default High Resolution Mode (Tweaked down slightly for performance)
+    engine.setHardwareScalingLevel(1.25);
+    console.log(`🚀 DEFAULT SCALING: Level 1.25`);
   };
 
   // --------------------------------------------
