@@ -1,6 +1,7 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const WorkboxPlugin = require('workbox-webpack-plugin');
 
 module.exports = {
   entry: './src/main.ts',
@@ -12,6 +13,10 @@ module.exports = {
   },
   resolve: {
     extensions: ['.ts', '.tsx', '.js'],
+  },
+  // Enable filesystem caching for significantly faster subsequent builds
+  cache: {
+    type: 'filesystem',
   },
   // Code splitting configuration
   optimization: {
@@ -91,6 +96,13 @@ module.exports = {
           },
         },
       ],
+    }),
+    new WorkboxPlugin.GenerateSW({
+      // these options encourage the ServiceWorkers to get in there fast
+      // and not allow any straggling "old" SWs to hang around
+      clientsClaim: true,
+      skipWaiting: true,
+      maximumFileSizeToCacheInBytes: 30000000, // 30MB limit for GLB files!
     }),
   ],
   devServer: {

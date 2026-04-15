@@ -803,11 +803,10 @@ export function createFallingCubeRoad(
     // GAP DETECTION FOR PLAYER
     // ----------------------------------------------------------
     function isOverGap(playerX: number, playerZ: number): boolean {
-        // Increase tolerance slightly to "guarantee" fall if they are mostly over the hole
-        // Cube size 25 -> Half 12.5.
-        // User requested: "Only triggered when closer to the center."
-        // Reducing radius to 8 (so you must be within 8 units of center)
-        const searchRadius = 8;
+        // Radius set to 10.0. Cubes are 25 units wide (centers at 25, 50, etc). 
+        // Lanes are at 30 units. A player at 30 over a hole at 25 has dx=5.
+        // A radius of 10.0 correctly registers them inside the hole but prevents falling on solid adjacent edges.
+        const searchRadius = 10.0;
 
         for (const cube of allCubes) {
             if (cube.state === "fallen") {
@@ -860,11 +859,11 @@ export function createFallingCubeRoad(
     // REPAIR ROAD (fill gap at position)
     // ----------------------------------------------------------
     function fillGapAt(x: number, z: number): void {
-        const searchRadius = CONFIG.cubeSize; // 25
+        const searchRadius = CONFIG.cubeSize * 2.5; // Expanded to repair all cubes within a 2x2/3x3 area
 
         for (const cube of allCubes) {
-            // Find closest fallen cube
-            if (cube.state === "fallen") {
+            // Find nearby fallen OR falling cubes
+            if (cube.state === "fallen" || cube.state === "falling") {
                 const dx = Math.abs(x - cube.instance.position.x);
                 const dz = Math.abs(z - cube.instance.position.z);
 
@@ -877,8 +876,7 @@ export function createFallingCubeRoad(
                     cube.instance.isVisible = true;
                     // Remove from fallen tracking
                     fallenCubePositions.delete(getCubeKey(cube));
-                    // We can stop after fixing one, or fix all in radius. Fixing one is usually enough.
-                    return;
+                    // Keep looping to fix all nearby cubes in the radius
                 }
             }
         }

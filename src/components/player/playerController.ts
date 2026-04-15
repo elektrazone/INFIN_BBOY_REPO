@@ -509,12 +509,10 @@ export function setupPlayerController(
       return;
     }
 
-    // NORMAL LIFE LOSS FALL
-    console.log("💔 Player lost a life - falling through floor");
-    isFallingInGap = true; // Always fall on life loss
-    jumpMotion.active = false;
-    jumpMotion.velocity = -50; // Start falling immediately
+    // NORMAL LIFE LOSS
+    console.log("💔 Player lost a life");
     invulnerabilityTimer = INVULNERABILITY_AFTER_HIT;
+    
     stateMachine.setPlayerState("Fall", true);
 
     // Cancel camera zoom if active
@@ -922,6 +920,7 @@ export function setupPlayerController(
       if (cur === "Getup" || cur === "Run" || cur === "Idle" || cur === "Strafe_L" || cur === "Strafe_R") {
         console.log(`✨ Respawn Recovery: Resetting isFallingInGap from state ${cur}`);
         isFallingInGap = false;
+        baseY = groundBaseY; // CRITICAL: Reset the base floor level!
         playerRoot.position.y = baseY;
         jumpMotion.velocity = 0;
 
@@ -939,6 +938,10 @@ export function setupPlayerController(
           lastY: playerRoot.position.y,
           lastZ: playerRoot.position.z
         };
+
+        if (fallingCubeRoadController) {
+          fallingCubeRoadController.fillGapAt(playerRoot.position.x, playerRoot.position.z);
+        }
 
         console.log("✨ Recovered from gap fall & repaired road");
       }
@@ -1110,9 +1113,10 @@ export function setupPlayerController(
       camera.fov = startFov + (endFov - startFov) * easeT;
 
       if (cameraTarget) {
-        // ONLY lerp the Y height mathematically. 
-        // We leave X and Z alone here so the main track engine deltaX can properly let the player dodge side-to-side dynamically!
-        cameraTarget.position.y = startTargetY + (endTargetY - startTargetY) * easeT;
+        // ONLY lerp the X if we need to? Actually, we don't need to lerp X, Y, or Z here!
+        // The main update loop perfectly frames the cameraTarget to the player automatically and handles jumping beautifully.
+        // If we force it here, we snap the camera abruptly and break the jump tracking view!
+        // So we leave ALL target positioning to the standard tracker.
       }
 
       if (t >= 1) {
@@ -1122,8 +1126,7 @@ export function setupPlayerController(
         camera.alpha = endAlpha;
         camera.beta = endBeta;
         camera.fov = endFov;
-        // Upon complete zoom, don't snap the X/Z because the player might have dodged 10 feet to the right!
-        if (cameraTarget) cameraTarget.position.y = endTargetY;
+        // The main update track natively captures jumping, so we don't snap Y here either!
         console.log("✅ Camera Transition Complete");
       }
     });
@@ -1247,6 +1250,10 @@ export function setupPlayerController(
     targetX = 0;
     playerRoot.position.x = 0;
     playerRoot.rotation.y = 0; // RESET: Face the camera (Diner) at start
+
+    if (fallingCubeRoadController) {
+      fallingCubeRoadController.reset();
+    }
 
     // RESET CAMERA TARGET
     // Always attach to player x/z on full reset, but only force intro framing if first start

@@ -191,9 +191,10 @@ export function createObstacleSystem(
     mesh.metadata = { obstacleType: type, variant: variantUsed, isHamburgerVariant };
     shadowGenerator.addShadowCaster(mesh, true);
 
-    mesh.doNotSyncBoundingInfo = true;
+    // Allow bounding boxes to sync normally as objects move towards the player
     if (collisionMeshes) {
-        collisionMeshes.forEach(col => col.doNotSyncBoundingInfo = true);
+        // Ensure collision meshes also sync bounds with their parents/transforms
+        collisionMeshes.forEach(col => col.doNotSyncBoundingInfo = false);
     }
 
     const created: ObstacleInstance = {
