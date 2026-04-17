@@ -38,8 +38,6 @@ const PerformanceMonitor: React.FC = () => {
     const fpsHistoryRef = useRef<number[]>([]);
     const gpuHistoryRef = useRef<number[]>([]);
     const instrumentationRef = useRef<BABYLON.SceneInstrumentation | null>(null);
-    const tapCountRef = useRef(0);
-    const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         // Wait for Babylon to initialize
@@ -147,20 +145,7 @@ const PerformanceMonitor: React.FC = () => {
     }, []);
 
     const handleHiddenTap = () => {
-        tapCountRef.current += 1;
-        
-        if (tapTimeoutRef.current) {
-            clearTimeout(tapTimeoutRef.current);
-        }
-        
-        if (tapCountRef.current >= 3) {
-            setIsVisible(v => !v);
-            tapCountRef.current = 0;
-        } else {
-            tapTimeoutRef.current = setTimeout(() => {
-                tapCountRef.current = 0;
-            }, 1200); // Increased to 1.2s to make tapping easier
-        }
+        setIsVisible(v => !v);
     };
 
     if (!stats) return null;
@@ -211,7 +196,7 @@ const PerformanceMonitor: React.FC = () => {
 
     return (
         <>
-            {/* Hidden touch zone for touch devices (Triple tap top right corner over the timer) */}
+            {/* Hidden touch zone for touch devices (Single tap top right corner over the timer) */}
             <div 
                 style={{
                     position: 'absolute',
@@ -381,7 +366,7 @@ const PerformanceMonitor: React.FC = () => {
                         color: '#666',
                         fontSize: '10px'
                     }}>
-                        Press ` or triple-tap top-right corner to toggle | Click to collapse
+                        Press ` or tap top-right corner to toggle | Click to collapse
                     </div>
                 </>
             )}
