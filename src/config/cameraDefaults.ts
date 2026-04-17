@@ -6,7 +6,7 @@
 export const CAMERA_DEFAULTS = {
     alpha: 1.57,
     beta: 1.21,
-    radius: 80.17,
+    radius: 102.37,
     targetX: 0.1,
     targetY: -5.6,
     targetZ: -7.6,
@@ -16,7 +16,7 @@ export const CAMERA_DEFAULTS = {
 export const INTRO_CAMERA_DEFAULTS = {
     alpha: 1.57,
     beta: 1.21,
-    radius: 80.17,
+    radius: 102.37,
     targetX: 0.1,
     targetY: -5.6,
     targetZ: -7.6,
