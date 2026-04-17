@@ -14,9 +14,9 @@ module.exports = {
   resolve: {
     extensions: ['.ts', '.tsx', '.js'],
   },
-  // Enable filesystem caching for significantly faster subsequent builds
+  // Enable memory caching to completely prevent filesystem corruption crashes
   cache: {
-    type: 'filesystem',
+    type: 'memory',
   },
   // Code splitting configuration
   optimization: {
@@ -112,6 +112,12 @@ module.exports = {
     compress: true,
     port: 3001,
     open: true,
+    client: {
+      overlay: {
+        errors: true,
+        warnings: false, // Prevents GenerateSW warnings from hijacking the screen
+      },
+    },
     // API endpoint for automatic camera saving
     setupMiddlewares: (middlewares, devServer) => {
       const fs = require('fs');

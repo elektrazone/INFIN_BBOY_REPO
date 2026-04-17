@@ -60,8 +60,8 @@ export const GameOverlay: React.FC = () => {
 
     return (
         <div className="game-overlay-container">
-            {/* Performance Monitor - Press ` to toggle (dev only) */}
-            {process.env.NODE_ENV === 'development' && <PerformanceMonitor />}
+            {/* Performance Monitor (Hidden by default, triggered by hidden touch zone) */}
+            <PerformanceMonitor />
 
             {/* TOUCH ZONES DEBUG OVERLAY - Always rendered if param is present */}
             {isDebugZones && (

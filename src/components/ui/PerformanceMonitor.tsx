@@ -31,10 +31,15 @@ declare global {
 const PerformanceMonitor: React.FC = () => {
     const [stats, setStats] = useState<PerformanceStats | null>(null);
     const [isVisible, setIsVisible] = useState(true);
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(true);
+    const [is1080pMode, setIs1080pMode] = useState(
+        (window as any).__GAME_DISPLAY_MODE === 'windowed-1080'
+    );
     const fpsHistoryRef = useRef<number[]>([]);
     const gpuHistoryRef = useRef<number[]>([]);
     const instrumentationRef = useRef<BABYLON.SceneInstrumentation | null>(null);
+    const tapCountRef = useRef(0);
+    const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         // Wait for Babylon to initialize
@@ -141,7 +146,24 @@ const PerformanceMonitor: React.FC = () => {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
-    if (!stats || !isVisible) return null;
+    const handleHiddenTap = () => {
+        tapCountRef.current += 1;
+        
+        if (tapTimeoutRef.current) {
+            clearTimeout(tapTimeoutRef.current);
+        }
+        
+        if (tapCountRef.current >= 3) {
+            setIsVisible(v => !v);
+            tapCountRef.current = 0;
+        } else {
+            tapTimeoutRef.current = setTimeout(() => {
+                tapCountRef.current = 0;
+            }, 1200); // Increased to 1.2s to make tapping easier
+        }
+    };
+
+    if (!stats) return null;
 
     // Color coding for FPS
     const getFpsColor = (fps: number) => {
@@ -158,7 +180,7 @@ const PerformanceMonitor: React.FC = () => {
     if (stats.gpuFrameTimeAvg > 16.67) warnings.push('⚠️ GPU bound');
 
     const styles: React.CSSProperties = {
-        position: 'fixed',
+        position: 'absolute',
         top: '10px',
         left: '10px',
         background: 'rgba(0, 0, 0, 0.85)',
@@ -176,9 +198,39 @@ const PerformanceMonitor: React.FC = () => {
         border: '1px solid rgba(255, 255, 255, 0.1)',
         cursor: 'pointer',
     };
+    const handleToggleMode = (e: React.MouseEvent) => {
+        e.stopPropagation(); // prevent collapsing the menu
+        const newMode = is1080pMode ? 'fullscreen' : 'windowed-1080';
+        (window as any).__GAME_DISPLAY_MODE = newMode;
+        setIs1080pMode(!is1080pMode);
+        
+        // Trigger a synthetic resize event to force babylonRunner.ts 
+        // to re-evaluate applyCanvasSize() immediately
+        window.dispatchEvent(new Event('resize'));
+    };
 
     return (
-        <div style={styles} onClick={() => setIsExpanded(!isExpanded)}>
+        <>
+            {/* Hidden touch zone for touch devices (Triple tap top right corner over the timer) */}
+            <div 
+                style={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    width: '120px',
+                    height: '120px',
+                    zIndex: 20000,
+                    cursor: 'pointer',
+                    background: 'transparent',
+                    pointerEvents: 'auto', // MUST force pointer events in case parent overlays block it!
+                    touchAction: 'none'    // Prevent double-tap-to-zoom on mobile hardware
+                }}
+                onClick={handleHiddenTap}
+                onTouchStart={handleHiddenTap} // More responsive on raw touch screens
+            />
+
+            {isVisible && (
+                <div style={styles} onClick={() => setIsExpanded(!isExpanded)}>
             {/* Main FPS Display */}
             <div style={{
                 fontSize: '20px',
@@ -295,6 +347,32 @@ const PerformanceMonitor: React.FC = () => {
                         </div>
                     )}
 
+                    {/* Mode Toggle Button */}
+                    <div style={{
+                        marginTop: '12px',
+                        paddingTop: '8px',
+                        borderTop: '1px solid rgba(255,255,255,0.1)',
+                        textAlign: 'center'
+                    }}>
+                        <button
+                            onClick={handleToggleMode}
+                            style={{
+                                background: is1080pMode ? '#3b82f6' : '#4b5563',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                padding: '6px 12px',
+                                fontSize: '11px',
+                                cursor: 'pointer',
+                                width: '100%',
+                                fontFamily: 'inherit',
+                                fontWeight: 'bold'
+                            }}
+                        >
+                            {is1080pMode ? "SQUARE VIEW ACTIVE" : "ENABLE 1080P WINDOW"}
+                        </button>
+                    </div>
+
                     {/* Help */}
                     <div style={{
                         borderTop: '1px solid rgba(255,255,255,0.1)',
@@ -303,11 +381,13 @@ const PerformanceMonitor: React.FC = () => {
                         color: '#666',
                         fontSize: '10px'
                     }}>
-                        Press ` to hide | Click to collapse
+                        Press ` or triple-tap top-right corner to toggle | Click to collapse
                     </div>
                 </>
             )}
         </div>
+        )}
+        </>
     );
 };
 

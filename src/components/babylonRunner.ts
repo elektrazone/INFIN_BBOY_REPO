@@ -34,6 +34,11 @@ if (BABYLON.DracoCompression) {
 export function babylonRunner(canvas: HTMLCanvasElement) {
   if (!canvas) return;
 
+  // Set default mode if not set
+  if (!(window as any).__GAME_DISPLAY_MODE) {
+      (window as any).__GAME_DISPLAY_MODE = 'fullscreen';
+  }
+
   let engine: BABYLON.Engine | null = null;
 
   // --------------------------------------------
@@ -78,26 +83,85 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
   // RESPONSIVE CANVAS
   // --------------------------------------------
   const applyCanvasSize = () => {
-    const aspect = 9 / 16;
-    const maxW = window.innerWidth;
-    const maxH = window.innerHeight;
+    const is1080p = (window as any).__GAME_DISPLAY_MODE === 'windowed-1080';
 
-    let height = maxH;
-    let width = height * aspect;
+    if (is1080p) {
+        // Reset body to fill screen
+        document.body.style.width = "100vw";
+        document.body.style.height = "100vh";
+        
+        // Background fits into the screen without cropped distortion (Contain)
+        document.body.style.backgroundImage = "url('/intro-screen.png')";
+        document.body.style.backgroundSize = "contain";
+        document.body.style.backgroundPosition = "center";
+        document.body.style.backgroundRepeat = "no-repeat";
 
-    if (width > maxW) {
-      width = maxW;
-      height = width / aspect;
+        // Calculate actual dimensions of the 'contained' 9:16 background image
+        let bgW = window.innerWidth;
+        let bgH = window.innerHeight;
+        const bgAspect = 9 / 16;
+        
+        if (bgW / bgH > bgAspect) {
+            bgW = bgH * bgAspect; // Screen is wider; height is limiting
+        } else {
+            bgH = bgW / bgAspect; // Screen is taller; width is limiting
+        }
+
+        // Scale factor relative to the native 4K Luma resolution (2160x3840)
+        const scale = bgW / 2160;
+
+        // Position canvas relative to the contained background
+        const bgTop = (window.innerHeight - bgH) / 2;
+        // On 4k Luma, 12% top offset = 460.8 pixels down
+        const topPx = bgTop + (460.8 * scale);
+
+        // Set CSS sizing to proportionally fit testing monitor
+        canvas.style.width = `${1080 * scale}px`;
+        canvas.style.height = `${1920 * scale}px`;
+
+        // Center on screen perfectly using standard absolute
+        canvas.style.position = 'absolute';
+        canvas.style.left = '50%';
+        canvas.style.top = `${topPx}px`;
+        canvas.style.transform = 'translate(-50%, 0)';
+
+        // IMPORTANT: WebGL internal rendering buffer LOCKED to exactly 1080x1920 for performance!
+        canvas.width = 1080;
+        canvas.height = 1920;
+        engine?.setHardwareScalingLevel(1.0);
+    } else {
+        document.body.style.backgroundImage = "none";
+        document.body.style.backgroundColor = "black";
+        document.body.style.width = "100vw";
+        document.body.style.height = "100vh";
+
+        const aspect = 9 / 16;
+        const maxW = window.innerWidth;
+        const maxH = window.innerHeight;
+
+        let height = maxH;
+        let width = height * aspect;
+
+        if (width > maxW) {
+          width = maxW;
+          height = width / aspect;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+
+        // Clear absolute centering flags
+        canvas.style.position = 'relative';
+        canvas.style.left = 'auto';
+        canvas.style.top = 'auto';
+        canvas.style.transform = 'none';
+
+        updateHardwareScaling();
     }
 
-    // Reverted the explicit size assignment here as removing it caused layout recalculation thrashing
-    canvas.width = width;
-    canvas.height = height;
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
-
     engine?.resize();
-    updateHardwareScaling();
   };
 
   applyCanvasSize();
