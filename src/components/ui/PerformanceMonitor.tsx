@@ -30,7 +30,7 @@ declare global {
 
 const PerformanceMonitor: React.FC = () => {
     const [stats, setStats] = useState<PerformanceStats | null>(null);
-    const [isVisible, setIsVisible] = useState(true);
+    const [isVisible, setIsVisible] = useState(false);
     const [isExpanded, setIsExpanded] = useState(true);
     const [is1080pMode, setIs1080pMode] = useState(
         (window as any).__GAME_DISPLAY_MODE === 'windowed-1080'
