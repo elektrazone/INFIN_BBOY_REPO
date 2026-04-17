@@ -91,7 +91,7 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
         document.body.style.height = "100vh";
         
         // Background fits into the screen without cropped distortion (Contain)
-        document.body.style.backgroundImage = "url('/intro-screen.png')";
+        document.body.style.backgroundImage = "url('/intro-screen.jpg')";
         document.body.style.backgroundSize = "contain";
         document.body.style.backgroundPosition = "center";
         document.body.style.backgroundRepeat = "no-repeat";
