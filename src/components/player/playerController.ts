@@ -190,7 +190,10 @@ export function setupPlayerController(
       jumpMotion.active = false;
       jumpMotion.velocity = 0;
       if (!debugOverrideState && stateMachine) {
-        stateMachine.setPlayerState("Run", true);
+        const cur = stateMachine.currentState;
+        if (cur !== "Fall" && cur !== "Getup" && cur !== "Death") {
+          stateMachine.setPlayerState("Run", true);
+        }
       }
     }
   }
