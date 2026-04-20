@@ -144,7 +144,9 @@ const PerformanceMonitor: React.FC = () => {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
-    const handleHiddenTap = () => {
+    const handleHiddenTap = (e: React.PointerEvent<HTMLDivElement>) => {
+        // Only trigger on primary pointer (first finger or main mouse click)
+        if (!e.isPrimary) return;
         setIsVisible(v => !v);
     };
 
@@ -210,8 +212,7 @@ const PerformanceMonitor: React.FC = () => {
                     pointerEvents: 'auto', // MUST force pointer events in case parent overlays block it!
                     touchAction: 'none'    // Prevent double-tap-to-zoom on mobile hardware
                 }}
-                onClick={handleHiddenTap}
-                onTouchStart={handleHiddenTap} // More responsive on raw touch screens
+                onPointerDown={handleHiddenTap}
             />
 
             {isVisible && (
