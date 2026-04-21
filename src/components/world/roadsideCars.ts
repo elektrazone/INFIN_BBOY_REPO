@@ -38,7 +38,7 @@ export function createRoadsideCars(
     let nextSpawnZ = SPAWN_Z;
 
     // Load all car models from roadside folder
-    const carFiles: string[] = []; // Temporarily hide cars: ["red_car.glb", "green_car.glb", "flame_car.glb", "white_car.glb"];
+    const carFiles = ["red_car.glb", "green_car.glb", "flame_car.glb", "white_car.glb"];
     const loadPromises = carFiles.map(file => {
         const url = `scene/assets/model/roadside/${file}`;
         return BABYLON.SceneLoader.LoadAssetContainerAsync("", url, scene, null, ".glb")
