@@ -106,7 +106,9 @@ export function createWorldSegments(
 
     packagedTex.onLoadObservable.addOnce(() => {
       applyRoadTextureSettings(packagedTex);
-      groundMaterial.albedoTexture = packagedTex;
+      const mat = groundMaterial as any;
+      if (mat.albedoTexture !== undefined) mat.albedoTexture = packagedTex;
+      else if (mat.diffuseTexture !== undefined) mat.diffuseTexture = packagedTex;
     });
 
     return { packagedTex, dynamicTex: dyn };
@@ -115,7 +117,10 @@ export function createWorldSegments(
   const { packagedTex, dynamicTex } = createFallbackTextures();
 
   // Use dynamic texture by default
-  groundMaterial.albedoTexture = dynamicTex;
+  const gMat = groundMaterial as any;
+  if (gMat.albedoTexture !== undefined) gMat.albedoTexture = dynamicTex;
+  else if (gMat.diffuseTexture !== undefined) gMat.diffuseTexture = dynamicTex;
+  
   applyRoadTextureSettings(dynamicTex);
 
   let activeRoadTexture = dynamicTex;

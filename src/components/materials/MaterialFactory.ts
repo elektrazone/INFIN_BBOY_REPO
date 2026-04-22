@@ -1,5 +1,5 @@
-// src/components/materials/MaterialFactory.ts
 import * as BABYLON from "@babylonjs/core";
+import { PERFORMANCE_CONFIG } from "../../config/performanceConfig";
 
 /**
  * Centralized MaterialFactory
@@ -92,21 +92,28 @@ const HAMBURGER_COLORS: Record<string, { albedo: BABYLON.Color3; emissive?: BABY
     },
 };
 
-/**
- * Get or create ground material
- */
-export function getGroundMaterial(scene: BABYLON.Scene): BABYLON.PBRMaterial {
-    const key = "groundPBR";
+export function getGroundMaterial(scene: BABYLON.Scene): BABYLON.Material {
+    const isStandard = PERFORMANCE_CONFIG.useStandardMaterialsByDefault;
+    const key = isStandard ? "groundStd" : "groundPBR";
+    
     if (materialCache.has(key)) {
-        return materialCache.get(key)!;
+        return (materialCache.get(key) as any);
     }
 
-    const mat = new BABYLON.PBRMaterial(key, scene);
-    mat.albedoColor = MATERIAL_CONFIGS.ground.albedoColor;
-    mat.metallic = MATERIAL_CONFIGS.ground.metallic;
-    mat.roughness = MATERIAL_CONFIGS.ground.roughness;
+    let mat: BABYLON.Material;
+    if (isStandard) {
+        const std = new BABYLON.StandardMaterial(key, scene);
+        std.diffuseColor = MATERIAL_CONFIGS.ground.albedoColor;
+        mat = std;
+    } else {
+        const pbr = new BABYLON.PBRMaterial(key, scene);
+        pbr.albedoColor = MATERIAL_CONFIGS.ground.albedoColor;
+        pbr.metallic = MATERIAL_CONFIGS.ground.metallic;
+        pbr.roughness = MATERIAL_CONFIGS.ground.roughness;
+        mat = pbr;
+    }
 
-    materialCache.set(key, mat);
+    materialCache.set(key, mat as any);
     mat.freeze(); // Freeze for performance (ground is static)
     return mat;
 }

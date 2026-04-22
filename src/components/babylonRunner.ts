@@ -4,6 +4,7 @@ import "@babylonjs/loaders";
 
 import { createScene, createLighting, createCamera, createSkyDome, createLensEffect } from "./scene/sceneManager";
 import { getAssetRoots } from "./assetPaths";
+import { PERFORMANCE_CONFIG } from "../config/performanceConfig";
 
 // ... (existing imports)
 
@@ -60,10 +61,10 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
     }
 
     if (quality === "4k" || quality === "high") {
-      // 1.25 = Slight reduction from 1:1 CSS resolution
-      // Takes the edge off 4K rendering while staying sharp
-      engine.setHardwareScalingLevel(1.25);
-      console.log("🚀 HIGH-RES MODE (4K/HIGH): Scaling set to 1.25");
+      // 2.0 = Significant reduction from 4K for performance (effectively 1080p internal buffer on a 4K screen)
+      // Takes the edge off 4K rendering while staying sharp on the UI side
+      engine.setHardwareScalingLevel(2.0);
+      console.log("🚀 HIGH-RES MODE (4K/HIGH): Scaling set to 2.0");
       return;
     }
 
@@ -74,93 +75,45 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
       return;
     }
 
-    // Default High Resolution Mode (Tweaked down slightly for performance)
-    engine.setHardwareScalingLevel(1.25);
-    console.log(`🚀 DEFAULT SCALING: Level 1.25`);
+    // Default Optimized Mode
+    const defaultScaling = PERFORMANCE_CONFIG.defaultHardwareScaling || 2.0;
+    engine.setHardwareScalingLevel(defaultScaling);
+    console.log(`🚀 DEFAULT SCALING: Level ${defaultScaling}`);
   };
 
   // --------------------------------------------
   // RESPONSIVE CANVAS
   // --------------------------------------------
   const applyCanvasSize = () => {
-    const is1080p = (window as any).__GAME_DISPLAY_MODE === 'windowed-1080';
+    document.body.style.backgroundImage = "none";
+    document.body.style.backgroundColor = "black";
+    document.body.style.width = "100vw";
+    document.body.style.height = "100vh";
 
-    if (is1080p) {
-        // Reset body to fill screen
-        document.body.style.width = "100vw";
-        document.body.style.height = "100vh";
-        
-        // Background fits into the screen without cropped distortion (Contain)
-        document.body.style.backgroundImage = "url('/intro-screen.jpg')";
-        document.body.style.backgroundSize = "contain";
-        document.body.style.backgroundPosition = "center";
-        document.body.style.backgroundRepeat = "no-repeat";
+    const aspect = 9 / 16;
+    const maxW = window.innerWidth;
+    const maxH = window.innerHeight;
 
-        // Calculate actual dimensions of the 'contained' 9:16 background image
-        let bgW = window.innerWidth;
-        let bgH = window.innerHeight;
-        const bgAspect = 9 / 16;
-        
-        if (bgW / bgH > bgAspect) {
-            bgW = bgH * bgAspect; // Screen is wider; height is limiting
-        } else {
-            bgH = bgW / bgAspect; // Screen is taller; width is limiting
-        }
+    let height = maxH;
+    let width = height * aspect;
 
-        // Scale factor relative to the native 4K Luma resolution (2160x3840)
-        const scale = bgW / 2160;
-
-        // Position canvas relative to the contained background
-        const bgTop = (window.innerHeight - bgH) / 2;
-        // On 4k Luma, 12% top offset = 460.8 pixels down
-        const topPx = bgTop + (460.8 * scale);
-
-        // Set CSS sizing to proportionally fit testing monitor
-        canvas.style.width = `${1080 * scale}px`;
-        canvas.style.height = `${1920 * scale}px`;
-
-        // Center on screen perfectly using standard absolute
-        canvas.style.position = 'absolute';
-        canvas.style.left = '50%';
-        canvas.style.top = `${topPx}px`;
-        canvas.style.transform = 'translate(-50%, 0)';
-
-        // IMPORTANT: WebGL internal rendering buffer LOCKED to exactly 1080x1920 for performance!
-        canvas.width = 1080;
-        canvas.height = 1920;
-        engine?.setHardwareScalingLevel(1.0);
-    } else {
-        document.body.style.backgroundImage = "none";
-        document.body.style.backgroundColor = "black";
-        document.body.style.width = "100vw";
-        document.body.style.height = "100vh";
-
-        const aspect = 9 / 16;
-        const maxW = window.innerWidth;
-        const maxH = window.innerHeight;
-
-        let height = maxH;
-        let width = height * aspect;
-
-        if (width > maxW) {
-          width = maxW;
-          height = width / aspect;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        canvas.style.width = `${width}px`;
-        canvas.style.height = `${height}px`;
-
-        // Clear absolute centering flags
-        canvas.style.position = 'relative';
-        canvas.style.left = 'auto';
-        canvas.style.top = 'auto';
-        canvas.style.transform = 'none';
-
-        updateHardwareScaling();
+    if (width > maxW) {
+      width = maxW;
+      height = width / aspect;
     }
 
+    canvas.width = width;
+    canvas.height = height;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+
+    // Ensure responsive centering
+    canvas.style.position = 'relative';
+    canvas.style.left = 'auto';
+    canvas.style.top = 'auto';
+    canvas.style.transform = 'none';
+
+    updateHardwareScaling();
     engine?.resize();
   };
 

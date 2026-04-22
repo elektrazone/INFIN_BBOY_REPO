@@ -1,6 +1,7 @@
 // src/components/ui/PerformanceMonitor.tsx
 import React, { useEffect, useState, useRef } from 'react';
 import * as BABYLON from '@babylonjs/core';
+import { PERFORMANCE_CONFIG } from '../../config/performanceConfig';
 
 interface PerformanceStats {
     fps: number;
@@ -32,9 +33,20 @@ const PerformanceMonitor: React.FC = () => {
     const [stats, setStats] = useState<PerformanceStats | null>(null);
     const [isVisible, setIsVisible] = useState(false);
     const [isExpanded, setIsExpanded] = useState(true);
-    const [is1080pMode, setIs1080pMode] = useState(
-        (window as any).__GAME_DISPLAY_MODE === 'windowed-1080'
-    );
+    
+    // Load initial state from localStorage or use PERFORMANCE_CONFIG defaults
+    const [scalingLevel, setScalingLevel] = useState<number>(() => {
+        const saved = localStorage.getItem('perf_scaling');
+        return saved ? parseFloat(saved) : (PERFORMANCE_CONFIG.defaultHardwareScaling || 2.0);
+    });
+    const [shadowsEnabled, setShadowsEnabled] = useState(() => {
+        const saved = localStorage.getItem('perf_shadows');
+        return saved !== null ? saved === 'true' : PERFORMANCE_CONFIG.shadowsEnabledByDefault;
+    });
+    const [standardMaterialsActive, setStandardMaterialsActive] = useState(() => {
+        const saved = localStorage.getItem('perf_mats');
+        return saved !== null ? saved === 'true' : PERFORMANCE_CONFIG.useStandardMaterialsByDefault;
+    });
     const fpsHistoryRef = useRef<number[]>([]);
     const gpuHistoryRef = useRef<number[]>([]);
     const instrumentationRef = useRef<BABYLON.SceneInstrumentation | null>(null);
@@ -60,6 +72,8 @@ const PerformanceMonitor: React.FC = () => {
     }, []);
 
     const initMonitoring = (engine: BABYLON.Engine, scene: BABYLON.Scene) => {
+        setScalingLevel(engine.getHardwareScalingLevel());
+        
         // Enable instrumentation for detailed GPU timing
         const instrumentation = new BABYLON.SceneInstrumentation(scene);
         instrumentation.captureFrameTime = true;
@@ -185,15 +199,86 @@ const PerformanceMonitor: React.FC = () => {
         border: '1px solid rgba(255, 255, 255, 0.1)',
         cursor: 'pointer',
     };
-    const handleToggleMode = (e: React.MouseEvent) => {
-        e.stopPropagation(); // prevent collapsing the menu
-        const newMode = is1080pMode ? 'fullscreen' : 'windowed-1080';
-        (window as any).__GAME_DISPLAY_MODE = newMode;
-        setIs1080pMode(!is1080pMode);
+    const toggleShadows = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const scene = window.__BABYLON_SCENE__;
+        if (!scene) return;
         
-        // Trigger a synthetic resize event to force babylonRunner.ts 
-        // to re-evaluate applyCanvasSize() immediately
-        window.dispatchEvent(new Event('resize'));
+        const newState = !shadowsEnabled;
+        
+        // 1. Global Scene Switch
+        scene.shadowsEnabled = newState;
+        
+        // 2. Individual Mesh Switch
+        scene.meshes.forEach(mesh => {
+            mesh.receiveShadows = newState;
+        });
+
+        // 3. Shadow Generator Refresh Rate
+        scene.lights.forEach(light => {
+            light.shadowEnabled = newState;
+            // Access the internal generators to stop their render loops
+            const generators = (light as any)._shadowGenerators;
+            if (generators) {
+                generators.forEach((gen: any) => {
+                    if (gen.getShadowMap) {
+                        gen.getShadowMap().refreshRate = newState ? 1 : 0;
+                    }
+                });
+            }
+        });
+
+        // 4. Force Shader Recompile (Strips shadow code from GPU)
+        scene.materials.forEach(mat => {
+            mat.markDirty();
+        });
+
+        setShadowsEnabled(newState);
+        localStorage.setItem('perf_shadows', newState.toString());
+        console.log(`🔦 Shadows Deep Purge: ${newState ? "ON" : "OFF"}`);
+    };
+
+    const toggleMaterials = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const scene = window.__BABYLON_SCENE__;
+        if (!scene) return;
+
+        const newState = !standardMaterialsActive;
+        scene.meshes.forEach(mesh => {
+            if (!mesh.material) return;
+
+            // Store original in metadata if not already there
+            mesh.metadata = mesh.metadata || {};
+
+            if (newState) {
+                // Switch to Standard (Optimized)
+                if (mesh.material instanceof BABYLON.PBRMaterial) {
+                    const pbr = mesh.material;
+                    // Check if we already have a cached standard version
+                    if (!mesh.metadata.cachedStandardMaterial) {
+                        const std = new BABYLON.StandardMaterial(`std_${pbr.name}`, scene);
+                        std.diffuseColor = pbr.albedoColor || BABYLON.Color3.White();
+                        std.diffuseTexture = pbr.albedoTexture;
+                        std.emissiveColor = pbr.emissiveColor || BABYLON.Color3.Black();
+                        std.emissiveTexture = pbr.emissiveTexture;
+                        std.bumpTexture = pbr.bumpTexture;
+                        std.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+                        mesh.metadata.cachedStandardMaterial = std;
+                        mesh.metadata.originalPBRMaterial = pbr;
+                    }
+                    mesh.material = mesh.metadata.cachedStandardMaterial;
+                }
+            } else {
+                // Switch back to PBR (Original)
+                if (mesh.metadata.originalPBRMaterial) {
+                    mesh.material = mesh.metadata.originalPBRMaterial;
+                }
+            }
+        });
+
+        setStandardMaterialsActive(newState);
+        localStorage.setItem('perf_mats', newState.toString());
+        console.log(`🎨 Materials: ${newState ? "STANDARD" : "PBR"}`);
     };
 
     return (
@@ -333,30 +418,83 @@ const PerformanceMonitor: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Mode Toggle Button */}
+                    {/* Display & Scaling Controls */}
                     <div style={{
                         marginTop: '12px',
                         paddingTop: '8px',
                         borderTop: '1px solid rgba(255,255,255,0.1)',
                         textAlign: 'center'
                     }}>
-                        <button
-                            onClick={handleToggleMode}
-                            style={{
-                                background: is1080pMode ? '#3b82f6' : '#4b5563',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                padding: '6px 12px',
-                                fontSize: '11px',
-                                cursor: 'pointer',
-                                width: '100%',
-                                fontFamily: 'inherit',
-                                fontWeight: 'bold'
-                            }}
-                        >
-                            {is1080pMode ? "SQUARE VIEW ACTIVE" : "ENABLE 1080P WINDOW"}
-                        </button>
+                        {/* Hardware Scaling */}
+                        <div style={{ color: '#60a5fa', fontWeight: 'bold', marginBottom: '8px' }}>
+                            Hardware Scaling: {scalingLevel.toFixed(2)}x
+                        </div>
+                        <div style={{ display: 'flex', gap: '4px', marginBottom: '12px' }}>
+                            {[1.0, 1.5, 2.0].map(level => (
+                                <button
+                                    key={level}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (window.__BABYLON_ENGINE__) {
+                                            window.__BABYLON_ENGINE__.setHardwareScalingLevel(level);
+                                            setScalingLevel(level);
+                                            localStorage.setItem('perf_scaling', level.toString());
+                                        }
+                                    }}
+                                    style={{
+                                        flex: 1,
+                                        background: Math.abs(scalingLevel - level) < 0.01 ? '#3b82f6' : '#4b5563',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        padding: '6px 0',
+                                        fontSize: '11px',
+                                        cursor: 'pointer',
+                                        fontWeight: 'bold'
+                                    }}
+                                >
+                                    {level.toFixed(1)}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Render Toggles */}
+                        <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
+                            <button
+                                onClick={toggleShadows}
+                                style={{
+                                    flex: 1,
+                                    background: shadowsEnabled ? '#4ade80' : '#4b5563',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    padding: '6px 0',
+                                    fontSize: '10px',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                SHADOWS: {shadowsEnabled ? "ON" : "OFF"}
+                            </button>
+                            <button
+                                onClick={toggleMaterials}
+                                style={{
+                                    flex: 1,
+                                    background: standardMaterialsActive ? '#facc15' : '#4b5563',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    padding: '6px 0',
+                                    fontSize: '10px',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                MATS: {standardMaterialsActive ? "STD" : "PBR"}
+                            </button>
+                        </div>
+
+
                     </div>
 
                     {/* Help */}
