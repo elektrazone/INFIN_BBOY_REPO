@@ -540,6 +540,16 @@ body {
   border-radius: 8px;
 }
 
+.version-label {
+  font-size: 10px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.35);
+  text-align: center;
+  margin-top: 2px;
+  letter-spacing: 1px;
+  text-shadow: none;
+}
+
 .match-timer.timer-warning {
   color: #ff4444;
   animation: pulse-warning 0.5s ease-in-out infinite;

@@ -110,6 +110,7 @@ export const GameOverlay: React.FC = () => {
                     {isMatchTimerActive && (
                         <div className={`match-timer ${matchTimeRemaining <= 10 ? 'timer-warning' : ''}`}>
                             {formatTime(matchTimeRemaining)}
+                            <div className="version-label">v1.0.0</div>
                         </div>
                     )}
 

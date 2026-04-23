@@ -51,6 +51,14 @@ const PerformanceMonitor: React.FC = () => {
         const saved = localStorage.getItem('perf_debris');
         return saved !== null ? saved === 'true' : true;
     });
+    const [is1080pMode, setIs1080pMode] = useState(() => {
+        const saved = localStorage.getItem('perf_display_mode');
+        return saved === '1080p';
+    });
+    const [skyEnabled, setSkyEnabled] = useState(() => {
+        const saved = localStorage.getItem('perf_sky');
+        return saved !== null ? saved === 'true' : true;
+    });
     const fpsHistoryRef = useRef<number[]>([]);
     const gpuHistoryRef = useRef<number[]>([]);
     const instrumentationRef = useRef<BABYLON.SceneInstrumentation | null>(null);
@@ -194,6 +202,13 @@ const PerformanceMonitor: React.FC = () => {
             // 3. Materials persistence is handled by the initial state of MaterialFactory 
             // and live toggle logic. We don't force a swap here as it's complex for live meshes,
             // but the factory already uses PERFORMANCE_CONFIG or can be updated to check localStorage.
+
+            // 4. Apply Sky
+            scene.meshes.forEach(mesh => {
+                if (mesh.name === 'skyDome') {
+                    mesh.isVisible = skyEnabled;
+                }
+            });
         };
 
         const interval = setInterval(() => {
@@ -344,6 +359,37 @@ const PerformanceMonitor: React.FC = () => {
         setDebrisEnabled(newState);
         localStorage.setItem('perf_debris', newState.toString());
         console.log(`✨ Fall Debris: ${newState ? "VISIBLE" : "HIDDEN"}`);
+    };
+
+    const handleToggleMode = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const newMode = !is1080pMode;
+        setIs1080pMode(newMode);
+        
+        const modeString = newMode ? '1080p' : 'fullscreen';
+        (window as any).__GAME_DISPLAY_MODE = modeString;
+        localStorage.setItem('perf_display_mode', modeString);
+        
+        // Trigger a resize event to apply changes in babylonRunner
+        window.dispatchEvent(new Event('resize'));
+        console.log(`🖥️ Display Mode: ${modeString.toUpperCase()}`);
+    };
+
+    const toggleSky = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const scene = window.__BABYLON_SCENE__;
+        if (!scene) return;
+
+        const newState = !skyEnabled;
+        scene.meshes.forEach(mesh => {
+            if (mesh.name === 'skyDome') {
+                mesh.isVisible = newState;
+            }
+        });
+
+        setSkyEnabled(newState);
+        localStorage.setItem('perf_sky', newState.toString());
+        console.log(`☁️ Sky Dome: ${newState ? "VISIBLE" : "HIDDEN"}`);
     };
 
     return (
@@ -573,9 +619,42 @@ const PerformanceMonitor: React.FC = () => {
                             >
                                 DEBRIS: {debrisEnabled ? "ON" : "OFF"}
                             </button>
+                            <button
+                                onClick={toggleSky}
+                                style={{
+                                    flex: 1,
+                                    background: skyEnabled ? '#818cf8' : '#4b5563',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    padding: '6px 0',
+                                    fontSize: '10px',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                SKY: {skyEnabled ? "ON" : "OFF"}
+                            </button>
                         </div>
 
-
+                        {/* Mode Toggle Button */}
+                        <button
+                            onClick={handleToggleMode}
+                            style={{
+                                background: is1080pMode ? '#3b82f6' : '#4b5563',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                padding: '6px 12px',
+                                fontSize: '11px',
+                                cursor: 'pointer',
+                                width: '100%',
+                                fontFamily: 'inherit',
+                                fontWeight: 'bold'
+                            }}
+                        >
+                            {is1080pMode ? "SQUARE VIEW ACTIVE" : "ENABLE 1080P WINDOW"}
+                        </button>
                     </div>
 
                     {/* Help */}
