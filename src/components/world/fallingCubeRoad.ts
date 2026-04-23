@@ -305,7 +305,9 @@ export function createFallingCubeRoad(
             const randomScale = 0.5 + Math.random() * 1.0;
             piece.mesh.scaling.setAll(randomScale);
 
-            piece.mesh.isVisible = true;
+            // Check if debris is enabled in Performance Monitor
+            const isDebrisEnabled = localStorage.getItem('perf_debris') !== 'false';
+            piece.mesh.isVisible = isDebrisEnabled;
             piece.active = true;
             activeDebris.push(piece);
         }

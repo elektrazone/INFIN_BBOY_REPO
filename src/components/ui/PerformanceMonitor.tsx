@@ -47,6 +47,10 @@ const PerformanceMonitor: React.FC = () => {
         const saved = localStorage.getItem('perf_mats');
         return saved !== null ? saved === 'true' : PERFORMANCE_CONFIG.useStandardMaterialsByDefault;
     });
+    const [debrisEnabled, setDebrisEnabled] = useState(() => {
+        const saved = localStorage.getItem('perf_debris');
+        return saved !== null ? saved === 'true' : true;
+    });
     const fpsHistoryRef = useRef<number[]>([]);
     const gpuHistoryRef = useRef<number[]>([]);
     const instrumentationRef = useRef<BABYLON.SceneInstrumentation | null>(null);
@@ -281,6 +285,23 @@ const PerformanceMonitor: React.FC = () => {
         console.log(`🎨 Materials: ${newState ? "STANDARD" : "PBR"}`);
     };
 
+    const toggleDebris = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const scene = window.__BABYLON_SCENE__;
+        if (!scene) return;
+
+        const newState = !debrisEnabled;
+        scene.meshes.forEach(mesh => {
+            if (mesh.name.startsWith('debris_')) {
+                mesh.isVisible = newState;
+            }
+        });
+
+        setDebrisEnabled(newState);
+        localStorage.setItem('perf_debris', newState.toString());
+        console.log(`✨ Fall Debris: ${newState ? "VISIBLE" : "HIDDEN"}`);
+    };
+
     return (
         <>
             {/* Hidden touch zone for touch devices (Single tap top right corner over the timer) */}
@@ -491,6 +512,22 @@ const PerformanceMonitor: React.FC = () => {
                                 }}
                             >
                                 MATS: {standardMaterialsActive ? "STD" : "PBR"}
+                            </button>
+                            <button
+                                onClick={toggleDebris}
+                                style={{
+                                    flex: 1,
+                                    background: debrisEnabled ? '#2dd4bf' : '#4b5563',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    padding: '6px 0',
+                                    fontSize: '10px',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                DEBRIS: {debrisEnabled ? "ON" : "OFF"}
                             </button>
                         </div>
 
