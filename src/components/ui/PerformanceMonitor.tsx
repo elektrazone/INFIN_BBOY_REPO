@@ -162,6 +162,50 @@ const PerformanceMonitor: React.FC = () => {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
+    // Apply saved settings automatically once engine/scene are ready
+    useEffect(() => {
+        const applySavedSettings = () => {
+            const scene = window.__BABYLON_SCENE__;
+            const engine = window.__BABYLON_ENGINE__;
+            if (!scene || !engine) return;
+
+            console.log("🛠️ Performance Monitor: Applying saved settings...");
+
+            // 1. Apply Scaling
+            engine.setHardwareScalingLevel(scalingLevel);
+
+            // 2. Apply Shadows
+            scene.shadowsEnabled = shadowsEnabled;
+            scene.lights.forEach(light => {
+                light.shadowEnabled = shadowsEnabled;
+                const generators = (light as any)._shadowGenerators;
+                if (generators) {
+                    generators.forEach((gen: any) => {
+                        if (gen.getShadowMap) {
+                            gen.getShadowMap().refreshRate = shadowsEnabled ? 1 : 0;
+                        }
+                    });
+                }
+            });
+            scene.meshes.forEach(mesh => {
+                mesh.receiveShadows = shadowsEnabled;
+            });
+
+            // 3. Materials persistence is handled by the initial state of MaterialFactory 
+            // and live toggle logic. We don't force a swap here as it's complex for live meshes,
+            // but the factory already uses PERFORMANCE_CONFIG or can be updated to check localStorage.
+        };
+
+        const interval = setInterval(() => {
+            if (window.__BABYLON_SCENE__ && window.__BABYLON_ENGINE__) {
+                applySavedSettings();
+                clearInterval(interval);
+            }
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, []); // Only run once on mount to establish initial state from localStorage
+
     const handleHiddenTap = (e: React.PointerEvent<HTMLDivElement>) => {
         // Only trigger on primary pointer (first finger or main mouse click)
         if (!e.isPrimary) return;

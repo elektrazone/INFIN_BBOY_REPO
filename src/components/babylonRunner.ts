@@ -129,6 +129,14 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
   // --------------------------------------------
   const { engine: createdEngine, scene } = createScene(canvas);
   engine = createdEngine;
+  
+  // Apply saved global shadow state immediately
+  const savedShadows = localStorage.getItem('perf_shadows');
+  if (savedShadows === 'false') {
+      scene.shadowsEnabled = false;
+      console.log("🔦 Performance: Global shadows DISABLED on boot.");
+  }
+  
   updateHardwareScaling();
 
   // --------------------------------------------

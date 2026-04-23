@@ -93,7 +93,9 @@ const HAMBURGER_COLORS: Record<string, { albedo: BABYLON.Color3; emissive?: BABY
 };
 
 export function getGroundMaterial(scene: BABYLON.Scene): BABYLON.Material {
-    const isStandard = PERFORMANCE_CONFIG.useStandardMaterialsByDefault;
+    const saved = localStorage.getItem('perf_mats');
+    const isStandard = saved !== null ? saved === 'true' : PERFORMANCE_CONFIG.useStandardMaterialsByDefault;
+    
     const key = isStandard ? "groundStd" : "groundPBR";
     
     if (materialCache.has(key)) {
@@ -168,23 +170,35 @@ export function getObstacleMaterial(
 export function getBuildingMaterial(
     scene: BABYLON.Scene,
     originalColor?: BABYLON.Color3
-): BABYLON.PBRMaterial {
+): BABYLON.Material {
+    const saved = localStorage.getItem('perf_mats');
+    const isStandard = saved !== null ? saved === 'true' : PERFORMANCE_CONFIG.useStandardMaterialsByDefault;
+
     // For buildings, we use the original color if provided
     const colorKey = originalColor
         ? `${originalColor.r.toFixed(2)}_${originalColor.g.toFixed(2)}_${originalColor.b.toFixed(2)}`
         : "default";
-    const key = `buildingPBR_${colorKey}`;
+    const key = isStandard ? `buildingStd_${colorKey}` : `buildingPBR_${colorKey}`;
 
     if (materialCache.has(key)) {
-        return materialCache.get(key)!;
+        return (materialCache.get(key) as any);
     }
 
-    const mat = new BABYLON.PBRMaterial(key, scene);
-    mat.albedoColor = originalColor ?? BABYLON.Color3.White();
-    mat.metallic = MATERIAL_CONFIGS.building.metallic;
-    mat.roughness = MATERIAL_CONFIGS.building.roughness;
+    let mat: BABYLON.Material;
+    if (isStandard) {
+        const std = new BABYLON.StandardMaterial(key, scene);
+        std.diffuseColor = originalColor ?? BABYLON.Color3.White();
+        std.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+        mat = std;
+    } else {
+        const pbr = new BABYLON.PBRMaterial(key, scene);
+        pbr.albedoColor = originalColor ?? BABYLON.Color3.White();
+        pbr.metallic = MATERIAL_CONFIGS.building.metallic;
+        pbr.roughness = MATERIAL_CONFIGS.building.roughness;
+        mat = pbr;
+    }
 
-    materialCache.set(key, mat);
+    materialCache.set(key, mat as any);
     mat.freeze(); // Freeze for performance (building materials are static)
     return mat;
 }
@@ -202,8 +216,30 @@ export function applyUnifiedMaterialToGLBMesh(
 
     if (!mat) return;
 
-    // If already PBRMaterial, preserve ALL original textures and properties from GLB
+    // If already PBRMaterial, check if we should be using Standard instead
     if (mat instanceof BABYLON.PBRMaterial) {
+        const saved = localStorage.getItem('perf_mats');
+        const shouldBeStandard = saved === 'true';
+
+        if (shouldBeStandard) {
+            // Convert to Standard (Optimized)
+            const std = new BABYLON.StandardMaterial(`${mat.name}_std`, scene);
+            std.diffuseColor = mat.albedoColor;
+            std.diffuseTexture = mat.albedoTexture;
+            std.emissiveColor = mat.emissiveColor;
+            std.emissiveTexture = mat.emissiveTexture;
+            std.bumpTexture = mat.bumpTexture;
+            std.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+            
+            // Store original for live toggling
+            mesh.metadata = mesh.metadata || {};
+            mesh.metadata.originalPBRMaterial = mat;
+            mesh.metadata.cachedStandardMaterial = std;
+            
+            mesh.material = std;
+            return;
+        }
+
         // Only override metallic/roughness if NO texture maps are defined
         // GLB uses metallicRoughnessTexture for combined metallic/roughness
         const hasMetallicRoughnessMap = mat.metallicTexture || mat.microSurfaceTexture;
