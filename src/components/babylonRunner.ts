@@ -238,9 +238,11 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
   createSkyDome(scene, assetBase); // Kept for API compatibility (mesh is invisible)
   // CSS sky visibility is controlled by the #sky-background div via PerformanceMonitor
   const savedSky = localStorage.getItem('perf_sky');
-  const skyEl = document.getElementById('sky-background');
-  if (skyEl && savedSky === 'false') {
-    skyEl.style.display = 'none';
+  const skyInitEl = document.getElementById('sky-background');
+  if (skyInitEl && savedSky === 'false') {
+    skyInitEl.style.backgroundImage = 'none';
+    skyInitEl.style.backgroundColor = '#4a90d9';
+    skyInitEl.style.animation = 'none';
   }
 
   // --------------------------------------------
