@@ -16,6 +16,12 @@ window.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
+  // Set sky background image dynamically (avoids webpack CSS url() resolution)
+  const skyEl = document.getElementById('sky-background');
+  if (skyEl) {
+    skyEl.style.backgroundImage = "url('/scene/assets/sky_clouds.jpg')";
+  }
+
   // Initialize React overlay first (before Babylon)
   initReactOverlay();
 

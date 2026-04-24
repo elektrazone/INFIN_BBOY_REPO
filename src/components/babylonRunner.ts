@@ -88,6 +88,12 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
     const displayMode = (window as any).__GAME_DISPLAY_MODE || localStorage.getItem('perf_display_mode') || 'fullscreen';
     const is1080p = displayMode === '1080p';
 
+    const skyEl = document.getElementById('sky-background');
+    if (skyEl) {
+        skyEl.style.position = 'absolute';
+        skyEl.style.zIndex = '-1';
+    }
+
     if (is1080p) {
         // Reset body to fill screen
         document.body.style.width = "100vw";
@@ -134,6 +140,15 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
         engine?.setHardwareScalingLevel(1.0);
 
         console.log(`🖥️ Display: 1080p Square View Active (scale: ${scale.toFixed(3)})`);
+
+        // Sync sky background to match canvas
+        if (skyEl) {
+            skyEl.style.width = canvas.style.width;
+            skyEl.style.height = canvas.style.height;
+            skyEl.style.left = canvas.style.left;
+            skyEl.style.top = canvas.style.top;
+            skyEl.style.transform = canvas.style.transform;
+        }
     } else {
         document.body.style.backgroundImage = "none";
         document.body.style.backgroundColor = "black";
@@ -157,11 +172,20 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
         canvas.style.width = `${width}px`;
         canvas.style.height = `${height}px`;
 
-        // Ensure responsive centering
-        canvas.style.position = 'relative';
-        canvas.style.left = 'auto';
-        canvas.style.top = 'auto';
-        canvas.style.transform = 'none';
+        // Let CSS default handle centering (position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%))
+        canvas.style.position = 'absolute';
+        canvas.style.left = '50%';
+        canvas.style.top = '50%';
+        canvas.style.transform = 'translate(-50%, -50%)';
+
+        // Sync sky background to match canvas
+        if (skyEl) {
+            skyEl.style.width = `${width}px`;
+            skyEl.style.height = `${height}px`;
+            skyEl.style.left = '50%';
+            skyEl.style.top = '50%';
+            skyEl.style.transform = 'translate(-50%, -50%)';
+        }
 
         updateHardwareScaling();
     }
@@ -209,11 +233,15 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
   const { assetBase, modelRoot, textureRoot } = getAssetRoots();
 
   // --------------------------------------------
-  // SKY DOME (Disabled)
+  // SKY (CSS Background Layer)
   // --------------------------------------------
-  const { skyDome } = createSkyDome(scene, assetBase);
+  createSkyDome(scene, assetBase); // Kept for API compatibility (mesh is invisible)
+  // CSS sky visibility is controlled by the #sky-background div via PerformanceMonitor
   const savedSky = localStorage.getItem('perf_sky');
-  skyDome.isVisible = savedSky !== 'false';
+  const skyEl = document.getElementById('sky-background');
+  if (skyEl && savedSky === 'false') {
+    skyEl.style.display = 'none';
+  }
 
   // --------------------------------------------
   // AUDIO MANAGER

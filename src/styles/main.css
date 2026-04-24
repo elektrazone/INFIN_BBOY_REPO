@@ -5,6 +5,26 @@ body {
   overflow: hidden;
 }
 
+/* ============================================ */
+/* CSS Sky Background (replaces 3D sky dome)   */
+/* ============================================ */
+
+#sky-background {
+  position: absolute;
+  z-index: -1;
+  /* background-image set dynamically via JS to avoid webpack resolution */
+  /* position/size set dynamically by applyCanvasSize() to match canvas */
+  background-size: 200% 100%;
+  background-repeat: repeat-x;
+  background-position: 0% center;
+  animation: cloud-drift 120s linear infinite;
+}
+
+@keyframes cloud-drift {
+  from { background-position: 0% center; }
+  to   { background-position: 200% center; }
+}
+
 #game-canvas {
   position: absolute;
   top: 50%;

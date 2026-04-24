@@ -6,7 +6,10 @@ import { CAMERA_DEFAULTS } from "../../config/cameraDefaults";
 // SCENE SETUP
 // -----------------------------------------------------------------------------
 export function createScene(canvas: HTMLCanvasElement) {
-    const engine = new BABYLON.Engine(canvas, true);
+    const engine = new BABYLON.Engine(canvas, true, {
+        premultipliedAlpha: false,  // Required for CSS sky to show through transparent areas
+        alpha: true                 // Enable WebGL alpha channel
+    });
 
     // Logger config
     BABYLON.Logger.ClearLogCache();
@@ -33,8 +36,8 @@ export function createScene(canvas: HTMLCanvasElement) {
     );
     scene.environmentIntensity = 0.4; // Subtle reflections
 
-    // Set background color to white
-    scene.clearColor = new BABYLON.Color4(1, 1, 1, 1);
+    // Transparent background so CSS sky layer shows through
+    scene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
 
     // ==========================================================================
     // IMAGE PROCESSING - Color vibrancy and saturation
@@ -218,51 +221,13 @@ export function createCamera(
 // SKY DOME SETUP
 // -----------------------------------------------------------------------------
 export function createSkyDome(scene: BABYLON.Scene, assetBase: string) {
-    // Create a large sphere for the sky dome
-    const skyDome = BABYLON.MeshBuilder.CreateSphere(
-        "skyDome",
-        {
-            diameter: 5000,
-            segments: 32,
-            sideOrientation: BABYLON.Mesh.BACKSIDE // Render inside of sphere
-        },
-        scene
-    );
-
-    // Create material with cloud texture
-    const skyMaterial = new BABYLON.StandardMaterial("skyMat", scene);
-    const cloudTexture = new BABYLON.Texture(
-        `${assetBase}sky_clouds.jpg`,
-        scene,
-        false,    // noMipmap
-        false,    // invertY - false to flip right-side up
-        BABYLON.Texture.TRILINEAR_SAMPLINGMODE
-    );
-
-    // Tile the texture more for smaller clouds
-    cloudTexture.uScale = 8;
-    cloudTexture.vScale = 4;
-
-    skyMaterial.diffuseTexture = cloudTexture;
-    skyMaterial.emissiveTexture = cloudTexture; // Self-illuminated sky
-    skyMaterial.emissiveColor = new BABYLON.Color3(0.5, 0.5, 0.5);
-    skyMaterial.specularColor = new BABYLON.Color3(0, 0, 0); // No specular
-    skyMaterial.backFaceCulling = false;
-    skyMaterial.disableLighting = true; // Sky doesn't need lighting
-
-    skyDome.material = skyMaterial;
+    // Sky is now rendered as a CSS background layer for zero GPU cost.
+    // Create a minimal invisible mesh to maintain the API contract.
+    const skyDome = BABYLON.MeshBuilder.CreatePlane("skyDome", { size: 0.001 }, scene);
+    skyDome.isVisible = false;
     skyDome.isPickable = false;
-    skyDome.infiniteDistance = true; // Sky stays at infinite distance
 
-    // Position sky dome slightly lower to bring the horizon down
-    skyDome.position.y = -500;
-
-    // Slowly rotate the sky dome for dynamic clouds
-    scene.onBeforeRenderObservable.add(() => {
-        skyDome.rotation.y += 0.0012 * scene.getAnimationRatio();
-    });
-
-    return { skyDome, skyMaterial, cloudTexture };
+    return { skyDome, skyMaterial: null, cloudTexture: null };
 }
 
 // -----------------------------------------------------------------------------

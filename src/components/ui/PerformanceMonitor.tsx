@@ -203,12 +203,11 @@ const PerformanceMonitor: React.FC = () => {
             // and live toggle logic. We don't force a swap here as it's complex for live meshes,
             // but the factory already uses PERFORMANCE_CONFIG or can be updated to check localStorage.
 
-            // 4. Apply Sky
-            scene.meshes.forEach(mesh => {
-                if (mesh.name === 'skyDome') {
-                    mesh.isVisible = skyEnabled;
-                }
-            });
+            // 4. Apply Sky (CSS layer)
+            const skyEl = document.getElementById('sky-background');
+            if (skyEl) {
+                skyEl.style.display = skyEnabled ? 'block' : 'none';
+            }
         };
 
         const interval = setInterval(() => {
@@ -377,19 +376,16 @@ const PerformanceMonitor: React.FC = () => {
 
     const toggleSky = (e: React.MouseEvent) => {
         e.stopPropagation();
-        const scene = window.__BABYLON_SCENE__;
-        if (!scene) return;
 
         const newState = !skyEnabled;
-        scene.meshes.forEach(mesh => {
-            if (mesh.name === 'skyDome') {
-                mesh.isVisible = newState;
-            }
-        });
+        const skyEl = document.getElementById('sky-background');
+        if (skyEl) {
+            skyEl.style.display = newState ? 'block' : 'none';
+        }
 
         setSkyEnabled(newState);
         localStorage.setItem('perf_sky', newState.toString());
-        console.log(`☁️ Sky Dome: ${newState ? "VISIBLE" : "HIDDEN"}`);
+        console.log(`☁️ Sky: ${newState ? "VISIBLE" : "HIDDEN"}`);
     };
 
     return (
