@@ -64,7 +64,7 @@ body {
 
 .left-hud-stack {
   position: absolute;
-  top: 20px;
+  top: 110px;
   left: 20px;
   display: flex;
   flex-direction: column;
@@ -140,7 +140,7 @@ body {
 
 .powerups-container {
   position: absolute;
-  top: 20px;
+  top: 110px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -544,7 +544,7 @@ body {
 
 .match-timer {
   position: absolute;
-  top: 20px;
+  top: 110px;
   right: 20px;
   font-family: 'Inter', 'Segoe UI', sans-serif;
   font-size: 2rem;
