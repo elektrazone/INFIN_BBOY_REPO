@@ -36,8 +36,9 @@ const PerformanceMonitor: React.FC = () => {
     
     // Load initial state from localStorage or use PERFORMANCE_CONFIG defaults
     const [scalingLevel, setScalingLevel] = useState<number>(() => {
+        if (PERFORMANCE_CONFIG.forceNativeFullscreenResolution) return 1.0;
         const saved = localStorage.getItem('perf_scaling');
-        return saved ? parseFloat(saved) : (PERFORMANCE_CONFIG.defaultHardwareScaling || 2.0);
+        return saved ? parseFloat(saved) : (PERFORMANCE_CONFIG.defaultHardwareScaling || 1.0);
     });
     const [shadowsEnabled, setShadowsEnabled] = useState(() => {
         const saved = localStorage.getItem('perf_shadows');
@@ -181,8 +182,16 @@ const PerformanceMonitor: React.FC = () => {
 
             console.log("🛠️ Performance Monitor: Applying saved settings...");
 
-            // 1. Apply Scaling
-            engine.setHardwareScalingLevel(scalingLevel);
+            // 1. Apply Scaling. Fullscreen kiosk mode stays native unless an
+            // explicit lower-resolution mode was selected elsewhere.
+            const displayMode = (window as any).__GAME_DISPLAY_MODE || localStorage.getItem('perf_display_mode') || 'fullscreen';
+            const nativeScaling = PERFORMANCE_CONFIG.forceNativeFullscreenResolution && displayMode !== '1080p';
+            const appliedScaling = nativeScaling ? 1.0 : scalingLevel;
+            engine.setHardwareScalingLevel(appliedScaling);
+            if (nativeScaling) {
+                localStorage.removeItem('perf_scaling');
+                setScalingLevel(1.0);
+            }
 
             // 2. Apply Shadows
             scene.shadowsEnabled = shadowsEnabled;
@@ -554,11 +563,18 @@ const PerformanceMonitor: React.FC = () => {
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         if (window.__BABYLON_ENGINE__) {
-                                            window.__BABYLON_ENGINE__.setHardwareScalingLevel(level);
-                                            setScalingLevel(level);
-                                            localStorage.setItem('perf_scaling', level.toString());
+                                            const nativeLocked = PERFORMANCE_CONFIG.forceNativeFullscreenResolution && !is1080pMode;
+                                            const nextLevel = nativeLocked ? 1.0 : level;
+                                            window.__BABYLON_ENGINE__.setHardwareScalingLevel(nextLevel);
+                                            setScalingLevel(nextLevel);
+                                            if (nativeLocked) {
+                                                localStorage.removeItem('perf_scaling');
+                                            } else {
+                                                localStorage.setItem('perf_scaling', nextLevel.toString());
+                                            }
                                         }
                                     }}
+                                    disabled={PERFORMANCE_CONFIG.forceNativeFullscreenResolution && !is1080pMode && level !== 1.0}
                                     style={{
                                         flex: 1,
                                         background: Math.abs(scalingLevel - level) < 0.01 ? '#3b82f6' : '#4b5563',
@@ -567,11 +583,11 @@ const PerformanceMonitor: React.FC = () => {
                                         borderRadius: '4px',
                                         padding: '6px 0',
                                         fontSize: '11px',
-                                        cursor: 'pointer',
+                                        cursor: PERFORMANCE_CONFIG.forceNativeFullscreenResolution && !is1080pMode && level !== 1.0 ? 'not-allowed' : 'pointer',
                                         fontWeight: 'bold'
                                     }}
                                 >
-                                    {level.toFixed(1)}
+                                    {level === 1.0 ? "1.0 NATIVE" : level.toFixed(1)}
                                 </button>
                             ))}
                         </div>

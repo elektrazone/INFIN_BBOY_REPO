@@ -22,7 +22,7 @@ export function createImpactVFX(
     options: ImpactVFXOptions = {}
 ): void {
     const duration = options.duration ?? 0.8;
-    const particleCount = options.particleCount ?? 120; // More particles for bigger cloud
+    const particleCount = options.particleCount ?? 60;
     // Dust cloud colors - earthy browns and grays
     const color1 = options.color1 ?? new BABYLON.Color4(0.6, 0.55, 0.5, 0.6); // Light dusty brown
     const color2 = options.color2 ?? new BABYLON.Color4(0.4, 0.35, 0.3, 0.5); // Darker brown
@@ -64,7 +64,7 @@ export function createImpactVFX(
     particleSystem.maxLifeTime = duration;
 
     // Emission settings - more particles, wider spread
-    particleSystem.emitRate = 400; // Increased from 300
+    particleSystem.emitRate = 220;
     particleSystem.blendMode = BABYLON.ParticleSystem.BLENDMODE_STANDARD; // Standard blend for dust
 
     // Stronger emission for bigger cloud spread

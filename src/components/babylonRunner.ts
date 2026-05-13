@@ -54,22 +54,22 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
     const urlParams = new URLSearchParams(window.location.search);
     const quality = urlParams.get('quality')?.toLowerCase() || urlParams.get('res')?.toLowerCase();
 
-    const savedScaling = localStorage.getItem('perf_scaling');
-    if (savedScaling && !quality) {
-      const scaling = Math.max(1, parseFloat(savedScaling) || PERFORMANCE_CONFIG.defaultHardwareScaling || 2.0);
-      engine.setHardwareScalingLevel(scaling);
+    if (PERFORMANCE_CONFIG.forceNativeFullscreenResolution && !quality) {
+      localStorage.removeItem('perf_scaling');
+      engine.setHardwareScalingLevel(1.0);
+      console.log("Native 4K mode: hardware scaling locked to 1.0");
       return;
     }
 
-    if (quality === "ultra") {
+    if (quality === "ultra" || quality === "4k" || quality === "high" || quality === "native") {
       // Full native physical pixels (extremely sharp, heavy)
-      const scaling = 1.0 / window.devicePixelRatio;
+      const scaling = 1.0;
       engine.setHardwareScalingLevel(scaling);
       console.log(`🚀 HIGH-RES MODE (ULTRA): Scaling at native physical pixels (${scaling.toFixed(4)})`);
       return;
     }
 
-    if (quality === "4k" || quality === "high") {
+    if (quality === "low" || quality === "1080p") {
       // 2.0 = Significant reduction from 4K for performance (effectively 1080p internal buffer on a 4K screen)
       // Takes the edge off 4K rendering while staying sharp on the UI side
       engine.setHardwareScalingLevel(2.0);
@@ -85,7 +85,7 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
     }
 
     // Default Optimized Mode
-    const defaultScaling = PERFORMANCE_CONFIG.defaultHardwareScaling || 2.0;
+    const defaultScaling = PERFORMANCE_CONFIG.defaultHardwareScaling || 1.0;
     engine.setHardwareScalingLevel(defaultScaling);
     console.log(`🚀 DEFAULT SCALING: Level ${defaultScaling}`);
   };

@@ -15,7 +15,7 @@ export function createCelebrationVFX(
     options: CelebrationVFXOptions = {}
 ): { dispose: () => void } {
     const duration = options.duration ?? 8;
-    const fireworkCount = options.fireworkCount ?? 5;
+    const fireworkCount = options.fireworkCount ?? 3;
     const particleSystems: BABYLON.ParticleSystem[] = [];
     const emitters: BABYLON.AbstractMesh[] = [];
     const timeouts: ReturnType<typeof setTimeout>[] = [];
@@ -29,7 +29,7 @@ export function createCelebrationVFX(
     confettiEmitter.isVisible = false;
     emitters.push(confettiEmitter);
 
-    const confetti = new BABYLON.ParticleSystem("confetti", 500, scene);
+    const confetti = new BABYLON.ParticleSystem("confetti", 260, scene);
     confetti.particleTexture = new BABYLON.Texture(
         "https://raw.githubusercontent.com/BabylonJS/Babylon.js/master/packages/tools/playground/public/textures/flare.png",
         scene
@@ -46,7 +46,7 @@ export function createCelebrationVFX(
     confetti.minLifeTime = 3;
     confetti.maxLifeTime = 5;
 
-    confetti.emitRate = 150;
+    confetti.emitRate = 80;
     confetti.blendMode = BABYLON.ParticleSystem.BLENDMODE_ONEONE;
 
     confetti.minEmitPower = 2;
@@ -94,7 +94,7 @@ export function createCelebrationVFX(
             fireworkEmitter.isVisible = false;
             emitters.push(fireworkEmitter);
 
-            const firework = new BABYLON.ParticleSystem(`firework${index}`, 300, scene);
+            const firework = new BABYLON.ParticleSystem(`firework${index}`, 180, scene);
             firework.particleTexture = new BABYLON.Texture(
                 "https://raw.githubusercontent.com/BabylonJS/Babylon.js/master/packages/tools/playground/public/textures/flare.png",
                 scene
@@ -112,7 +112,7 @@ export function createCelebrationVFX(
             firework.minLifeTime = 0.8;
             firework.maxLifeTime = 1.5;
 
-            firework.emitRate = 600;
+            firework.emitRate = 360;
             firework.blendMode = BABYLON.ParticleSystem.BLENDMODE_ONEONE;
 
             firework.minEmitPower = 15;

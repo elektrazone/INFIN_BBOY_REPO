@@ -1,12 +1,13 @@
 // src/components/scene/sceneManager.ts
 import * as BABYLON from "@babylonjs/core";
 import { CAMERA_DEFAULTS } from "../../config/cameraDefaults";
+import { PERFORMANCE_CONFIG } from "../../config/performanceConfig";
 
 // -----------------------------------------------------------------------------
 // SCENE SETUP
 // -----------------------------------------------------------------------------
 export function createScene(canvas: HTMLCanvasElement) {
-    const engine = new BABYLON.Engine(canvas, true, {
+    const engine = new BABYLON.Engine(canvas, PERFORMANCE_CONFIG.antialiasAtNative4K, {
         premultipliedAlpha: false,  // Required for CSS sky to show through transparent areas
         alpha: true,                // Enable WebGL alpha channel
         stencil: false,
@@ -49,18 +50,18 @@ export function createScene(canvas: HTMLCanvasElement) {
     // ==========================================================================
     // IMAGE PROCESSING - Color vibrancy and saturation
     // ==========================================================================
-    scene.imageProcessingConfiguration.isEnabled = true;
+    scene.imageProcessingConfiguration.isEnabled = PERFORMANCE_CONFIG.imageProcessingEnabledByDefault;
     scene.imageProcessingConfiguration.contrast = 1.3;      // Boost contrast
     scene.imageProcessingConfiguration.exposure = 1.1;      // Slightly brighter
 
     // Color curves for saturation boost
     const colorCurves = new BABYLON.ColorCurves();
     colorCurves.globalSaturation = 40;  // Increase saturation (0 = no change, positive = more saturated)
-    scene.imageProcessingConfiguration.colorCurvesEnabled = true;
+    scene.imageProcessingConfiguration.colorCurvesEnabled = PERFORMANCE_CONFIG.imageProcessingEnabledByDefault;
     scene.imageProcessingConfiguration.colorCurves = colorCurves;
 
     // Tone mapping for richer colors
-    scene.imageProcessingConfiguration.toneMappingEnabled = true;
+    scene.imageProcessingConfiguration.toneMappingEnabled = PERFORMANCE_CONFIG.imageProcessingEnabledByDefault;
     scene.imageProcessingConfiguration.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
 
     return {
@@ -95,10 +96,12 @@ export function createLighting(scene: BABYLON.Scene) {
     // Mobile detection for performance optimization
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-    // Use Cascaded Shadow Maps for consistent shadows over long distances
-    // Reduced quality on mobile for better performance
-    const shadowMapSize = isMobile ? 512 : 1024;
-    const shadowGenerator = new BABYLON.CascadedShadowGenerator(shadowMapSize, directionalLight);
+    // Avoid allocating cascaded shadow maps when shadows are off. Meshes can
+    // still register as casters, and the monitor can re-enable shadows later.
+    const shadowMapSize = shadowsEnabled ? (isMobile ? 512 : 1024) : 1;
+    const shadowGenerator = shadowsEnabled
+        ? new BABYLON.CascadedShadowGenerator(shadowMapSize, directionalLight)
+        : new BABYLON.ShadowGenerator(shadowMapSize, directionalLight);
     
     if (!shadowsEnabled) {
         directionalLight.shadowEnabled = false;
@@ -106,12 +109,14 @@ export function createLighting(scene: BABYLON.Scene) {
         if (shadowMap) shadowMap.refreshRate = 0;
     }
 
-    shadowGenerator.numCascades = isMobile ? 1 : 2; // Fewer cascades on kiosk hardware
-    shadowGenerator.lambda = 0.9; // Blend factor between logarithmic and linear distribution
-    shadowGenerator.cascadeBlendPercentage = 0.1; // Smooth blending between cascades
-    shadowGenerator.stabilizeCascades = true; // Reduce shadow swimming/flickering
-    shadowGenerator.shadowMaxZ = 500; // Cover a larger area
-    shadowGenerator.autoCalcDepthBounds = true; // Auto-calculate depth bounds
+    if (shadowGenerator instanceof BABYLON.CascadedShadowGenerator) {
+        shadowGenerator.numCascades = isMobile ? 1 : 2; // Fewer cascades on kiosk hardware
+        shadowGenerator.lambda = 0.9; // Blend factor between logarithmic and linear distribution
+        shadowGenerator.cascadeBlendPercentage = 0.1; // Smooth blending between cascades
+        shadowGenerator.stabilizeCascades = true; // Reduce shadow swimming/flickering
+        shadowGenerator.shadowMaxZ = 500; // Cover a larger area
+        shadowGenerator.autoCalcDepthBounds = true; // Auto-calculate depth bounds
+    }
 
     // Shadow quality settings
     shadowGenerator.usePercentageCloserFiltering = true; // Softer shadows
