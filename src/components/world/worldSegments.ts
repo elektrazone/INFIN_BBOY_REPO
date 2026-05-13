@@ -453,7 +453,7 @@ export function createWorldSegments(
   // STYLIZED TREES ALONG SIDEWALKS (GLB Model)
   // ---------------------------------------------
   const treeRoots: BABYLON.TransformNode[] = [];
-  const treeSpacing = 160;  // OPTIMIZED: Increased from 80 to reduce tree count
+  const treeSpacing = 240;  // MEMORY: Increased from 160 to reduce tree clone count
   const treeY = 3;         // Raise trees to sit on sidewalk
   const treeScale = 9.56;   // Scaled down by another 75% (current: 9.56)
   let treeContainer: BABYLON.AssetContainer | null = null;
@@ -493,7 +493,8 @@ export function createWorldSegments(
       for (const mesh of meshes) {
         mesh.doNotSyncBoundingInfo = true;
         mesh.receiveShadows = true;
-        shadowGenerator.addShadowCaster(mesh, true);
+        // MEMORY: Skip shadow casting for trees (decorative, far from road)
+        // shadowGenerator.addShadowCaster(mesh, true);
       }
     }
 
@@ -566,7 +567,7 @@ export function createWorldSegments(
       scene
     );
     markerBase.material = markerMat;
-    markerBase.receiveShadows = true;
+    markerBase.receiveShadows = false; // MEMORY: Markers too small for meaningful shadows
     markerBase.isVisible = false; // Hide base mesh
     markerBase.alwaysSelectAsActiveMesh = true;
     markerBase.doNotSyncBoundingInfo = true;

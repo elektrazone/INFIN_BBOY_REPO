@@ -127,6 +127,9 @@ export function createObstacleSystem(
   const obstaclePool: ObstacleInstance[] = [];
   const activeObstacles: ObstacleInstance[] = [];
 
+  // MEMORY: Cap pool size per type to prevent unbounded GLB clone growth
+  const MAX_POOL_PER_TYPE = 6;
+
   function acquire(type: ObstacleType) {
     let useHamburger = false;
     if (type !== "hamburger") {
@@ -157,6 +160,21 @@ export function createObstacleSystem(
       }
 
       return pooled;
+    }
+
+    // MEMORY: If pool for this type is at capacity, force-recycle any inactive one
+    const typePoolCount = obstaclePool.filter(o => o.type === type).length;
+    if (typePoolCount >= MAX_POOL_PER_TYPE) {
+      const recycled = obstaclePool.find(o => o.type === type && !o.active);
+      if (recycled) {
+        recycled.active = true;
+        recycled.mesh.setEnabled(true);
+        recycled.speedMultiplier = type === "platform" ? (1.2 + Math.random() * 1.0) : 1.0;
+        return recycled;
+      }
+      // All instances of this type are active — skip spawning to avoid memory growth
+      console.warn(`[MEM] Obstacle pool cap reached for type '${type}', skipping spawn`);
+      return null!;
     }
 
     let mesh: BABYLON.AbstractMesh | null = null;
@@ -228,7 +246,7 @@ export function createObstacleSystem(
   let spawnTimer = 1.0;
   let currentPattern: ObstaclePattern = ALL_PATTERNS[0];
   let currentPatternIndex = 0;
-  let nextSpawnDelay = 4.0; // Start with a safe 4 second buffer
+  let nextSpawnDelay = 5.5; // Start with a safe 5.5 second buffer
 
   // State tracking
   let lastActionCost = 0;
@@ -252,6 +270,7 @@ export function createObstacleSystem(
 
     for (const def of step.obstacles) {
       const obs = acquire(def.type);
+      if (!obs) continue; // Pool cap reached — skip this obstacle
       const xPos = def.laneIndex * laneWidth;
       const laneArrIdx = def.laneIndex + 1;
 
@@ -475,7 +494,7 @@ export function createObstacleSystem(
     activeObstacles.length = 0;
     spawnTimer = 0;
     currentPatternIndex = 0;
-    nextSpawnDelay = 4.0; // Grace period on restart
+    nextSpawnDelay = 5.5; // Grace period on restart
     const randomIndex = Math.floor(Math.random() * ALL_PATTERNS.length);
     currentPattern = ALL_PATTERNS[randomIndex];
     console.log("Obstacle system reset");

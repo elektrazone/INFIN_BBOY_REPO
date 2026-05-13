@@ -89,8 +89,8 @@ export function createLighting(scene: BABYLON.Scene) {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
     // Use Cascaded Shadow Maps for consistent shadows over long distances
-    // Reduced quality on mobile for better performance
-    const shadowMapSize = isMobile ? 1024 : 2048;
+    // MEMORY OPTIMIZED: Reduced from 2048 to 1024 to save ~48MB GPU memory
+    const shadowMapSize = 1024;
     const shadowGenerator = new BABYLON.CascadedShadowGenerator(shadowMapSize, directionalLight);
     
     if (!shadowsEnabled) {
@@ -99,12 +99,12 @@ export function createLighting(scene: BABYLON.Scene) {
         if (shadowMap) shadowMap.refreshRate = 0;
     }
 
-    shadowGenerator.numCascades = isMobile ? 2 : 4; // Fewer cascades on mobile
+    shadowGenerator.numCascades = 2; // MEMORY: Reduced from 4 to save GPU memory
     shadowGenerator.lambda = 0.9; // Blend factor between logarithmic and linear distribution
     shadowGenerator.cascadeBlendPercentage = 0.1; // Smooth blending between cascades
     shadowGenerator.stabilizeCascades = true; // Reduce shadow swimming/flickering
-    shadowGenerator.shadowMaxZ = 500; // Cover a larger area
-    shadowGenerator.autoCalcDepthBounds = true; // Auto-calculate depth bounds
+    shadowGenerator.shadowMaxZ = 300; // MEMORY: Reduced from 500
+    shadowGenerator.autoCalcDepthBounds = false; // MEMORY: Disable extra depth pre-pass
 
     // Shadow quality settings
     shadowGenerator.usePercentageCloserFiltering = true; // Softer shadows

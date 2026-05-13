@@ -27,11 +27,11 @@ const CONFIG = {
     fallMaxSpeed: 4000, // Higher terminal velocity
 
     // Trigger zone (relative to player Z position)
-    triggerZoneStart: -80,
-    triggerZoneEnd: -200,
+    triggerZoneStart: -120,
+    triggerZoneEnd: -280,
 
     // Fall probability per frame when in trigger zone
-    fallProbabilityPerSecond: 0.06375, // Reduced from 0.075 for an additional 15% reduction
+    fallProbabilityPerSecond: 0.048, // Reduced from 0.06375 for more reaction time
 
     // Maximum adjacent missing cubes (controls gap size)
     maxAdjacentGaps: 1,
@@ -189,8 +189,8 @@ export function createFallingCubeRoad(
     // ----------------------------------------------------------
     const DEBRIS_CONFIG = {
         pieceSize: CONFIG.cubeSize / 3, // Each debris piece is 1/3 the size
-        piecesPerCube: 8, // Number of debris pieces per falling cube
-        maxActiveDebris: 100, // Pool limit
+        piecesPerCube: 6, // MEMORY: Reduced from 8
+        maxActiveDebris: 50, // MEMORY: Reduced from 100
         gravity: 400, // Slowed down from 1500
         maxSpeed: 600, // Slowed down from 2000
         randomVelocityRange: 30, // Reduced from 50
@@ -432,8 +432,8 @@ export function createFallingCubeRoad(
                     instance.alwaysSelectAsActiveMesh = true;
                     instance.doNotSyncBoundingInfo = true;
 
-                    // Add to shadow caster
-                    shadowGenerator.addShadowCaster(instance, true);
+                    // MEMORY: Skipping shadow caster for instances (shadow catcher plane provides grounding)
+                    // shadowGenerator.addShadowCaster(instance, true);
 
                     const isCenter = isCellCenter(gx, gz);
                     if (isCenter) cellCenterCount++;
@@ -542,7 +542,7 @@ export function createFallingCubeRoad(
     // ----------------------------------------------------------
     // UPDATE LOOP
     // ----------------------------------------------------------
-    let gracePeriodTimer = 4.0; // 4 seconds of NO holes on start/reset
+    let gracePeriodTimer = 6.0; // 6 seconds of NO holes on start/reset
     
     const updateObserver = scene.onBeforeRenderObservable.add(() => {
         const gameState = useGameStore.getState().gameState;
@@ -853,7 +853,7 @@ export function createFallingCubeRoad(
             cube.instance.isVisible = true;
         }
         fallenCubePositions.clear();
-        gracePeriodTimer = 4.0; // Restores grace period on restart
+        gracePeriodTimer = 6.0; // Restores grace period on restart
         console.log("🔄 Falling cube road reset");
     }
 

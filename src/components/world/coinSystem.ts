@@ -156,9 +156,9 @@ export function createCoinSystem(
         new BABYLON.SubMesh(1, 0, vertexCount, tubeIndices, capIndices, coin);           // Top cap
         new BABYLON.SubMesh(2, 0, vertexCount, tubeIndices + capIndices, capIndices, coin); // Bottom cap
 
-        // Add shadow casting
-        shadowGenerator.addShadowCaster(coin, true);
-        coin.receiveShadows = true;
+        // MEMORY: Skip shadow casting for coins (small objects, shadow overhead not worth it)
+        // shadowGenerator.addShadowCaster(coin, true);
+        coin.receiveShadows = false;
 
         // Hide source mesh initially? No, the first one is used as a pool item too.
 

@@ -91,7 +91,7 @@ export function setupPlayerController(
   const maxLane = 1;
   let currentLane = 0;
   let targetX = 0;
-  const lateralLerp = 0.12;
+  const lateralLerp = 0.25;
 
   // ------------------------------------------
   // GAME FLOW
@@ -558,10 +558,21 @@ export function setupPlayerController(
     // Huge tolerance to make mounting platforms extremely forgiving (user request)
     const platformTopTolerance = 8.0;
 
+    // Jump obstacles (burger): if player's feet are above 55% of obstacle height,
+    // treat as cleared. This compensates for GLB hierarchy bounds being taller than
+    // the visual mesh, especially for the first spawned burger.
+    const jumpClearanceRatio = 0.55;
+
     for (const obs of obstacles) {
       if (!obs.active) continue;
 
       const mesh = obs.mesh;
+
+      // WARMUP: Skip obstacles that just spawned and haven't traveled far enough
+      // for their bounding info to be accurate (GLB hierarchy bounds can be stale
+      // on the first few frames after instantiation)
+      if (mesh.position.z < -350) continue;
+
       mesh.computeWorldMatrix(true);
 
       const collisionMeshes = obs.collisionMeshes?.length
@@ -583,6 +594,14 @@ export function setupPlayerController(
           const playerAbove =
             playerBox.min.y >= obsBox.max.y - platformTopTolerance;
           if (isOnPlatform || playerAbove) continue;
+        }
+
+        // JUMP CLEARANCE: If player's feet are above the clearance threshold
+        // of a jump obstacle, the player has visually cleared it — skip collision.
+        if (obs.type === "jump") {
+          const obsHeight = obsBox.max.y - obsBox.min.y;
+          const clearanceY = obsBox.min.y + obsHeight * jumpClearanceRatio;
+          if (playerBox.min.y >= clearanceY) continue;
         }
 
         if (intersectsAABB(playerBox, obsBox)) {
@@ -800,6 +819,9 @@ export function setupPlayerController(
     if (previousLane === currentLane) return;
 
     targetX = currentLane * laneWidth;
+
+    // Instant positional nudge for immediate tactile feedback (20% of lane width)
+    playerRoot.position.x += dir * laneWidth * 0.20;
 
     if (dir > 0) stateMachine.setPlayerState("Strafe_R");
     else stateMachine.setPlayerState("Strafe_L");
@@ -1352,8 +1374,12 @@ export function setupPlayerController(
   // TOUCH & POINTER INPUT
   // ------------------------------------------
   
-  const touchState = { startX: 0, startY: 0, startTime: 0, isDragging: false, handledByPointer: false };
-  const SWIPE_THRESHOLD = 50;
+  const touchState = {
+    startX: 0, startY: 0, startTime: 0,
+    isDragging: false, handledByPointer: false,
+    swipeConsumed: false,  // Prevents duplicate processing in touchend
+  };
+  const SWIPE_THRESHOLD = 40;  // Reduced from 50 for faster recognition
   const TAP_THRESHOLD = 200;
   const SWIPE_MAX_TIME = 500;
 
@@ -1364,24 +1390,16 @@ export function setupPlayerController(
     touchState.startX = touch.clientX; touchState.startY = touch.clientY;
     touchState.startTime = Date.now(); touchState.isDragging = true;
     touchState.handledByPointer = false;
+    touchState.swipeConsumed = false;
   }
 
-  function handleTouchMove(event: TouchEvent) {
-    if (!isGameActive() || !touchState.isDragging || isVictorySequenceActive) return;
-  }
-
-  function handleTouchEnd(event: TouchEvent) {
-    if (!isGameActive() || !touchState.isDragging || isVictorySequenceActive) return;
-    const touch = event.changedTouches[0];
-    if (!touch) return;
-    const deltaX = touch.clientX - touchState.startX;
-    const deltaY = touch.clientY - touchState.startY;
-    const deltaTime = Date.now() - touchState.startTime;
-    touchState.isDragging = false;
+  /** Process swipe the instant the finger crosses threshold — don't wait for lift */
+  function processTouchSwipe(currentX: number, currentY: number): boolean {
+    const deltaX = currentX - touchState.startX;
+    const deltaY = currentY - touchState.startY;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
-    // Swipe-only: taps do nothing, require deliberate swipe gesture
-    if (distance >= SWIPE_THRESHOLD && deltaTime < SWIPE_MAX_TIME) {
+    if (distance >= SWIPE_THRESHOLD) {
       if (Math.abs(deltaX) > Math.abs(deltaY)) {
         // Horizontal swipe: lane switch
         if (deltaX > 0) { performLaneSwitch(-1); } else { performLaneSwitch(1); }
@@ -1390,6 +1408,41 @@ export function setupPlayerController(
         if (deltaY < 0) { keyState.jump = true; setTimeout(() => (keyState.jump = false), 100); }
         else { keyState.slide = true; setTimeout(() => (keyState.slide = false), 500); }
       }
+      return true;
+    }
+    return false;
+  }
+
+  function handleTouchMove(event: TouchEvent) {
+    if (!isGameActive() || !touchState.isDragging || isVictorySequenceActive) return;
+    if (touchState.swipeConsumed) return;  // Already processed this swipe
+
+    const touch = event.touches[0];
+    if (!touch) return;
+
+    // Early swipe detection: fire the instant the finger crosses the threshold
+    if (processTouchSwipe(touch.clientX, touch.clientY)) {
+      touchState.swipeConsumed = true;
+    }
+  }
+
+  function handleTouchEnd(event: TouchEvent) {
+    if (!isGameActive() || !touchState.isDragging || isVictorySequenceActive) return;
+
+    // If swipe was already consumed during touchmove, skip
+    if (touchState.swipeConsumed) {
+      touchState.isDragging = false;
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+    const deltaTime = Date.now() - touchState.startTime;
+    touchState.isDragging = false;
+
+    // Fallback: process very fast swipes that may have only one touchmove (or none)
+    if (deltaTime < SWIPE_MAX_TIME) {
+      processTouchSwipe(touch.clientX, touch.clientY);
     }
   }
 

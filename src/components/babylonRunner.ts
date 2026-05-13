@@ -414,6 +414,19 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
   });
 
   // --------------------------------------------
+  // MEMORY DIAGNOSTICS (logs every 10 seconds)
+  // --------------------------------------------
+  const memDiagInterval = setInterval(() => {
+    const meshCount = scene.meshes.length;
+    const textureCount = scene.textures.length;
+    const materialCount = scene.materials.length;
+    const geometryCount = (scene as any).geometries?.length ?? 'N/A';
+    const perf = (performance as any).memory;
+    const heapMB = perf ? `${(perf.usedJSHeapSize / 1024 / 1024).toFixed(0)}MB / ${(perf.totalJSHeapSize / 1024 / 1024).toFixed(0)}MB` : 'N/A';
+    console.log(`[MEM] Meshes:${meshCount} Tex:${textureCount} Mat:${materialCount} Geo:${geometryCount} JSHeap:${heapMB}`);
+  }, 10000);
+
+  // --------------------------------------------
   // EVENTS
   // --------------------------------------------
   const onResize = () => applyCanvasSize();

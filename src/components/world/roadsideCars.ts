@@ -29,6 +29,9 @@ export function createRoadsideCars(
 
     const root = new BABYLON.TransformNode("roadside_cars_root", scene);
 
+    // MEMORY: Hard cap on total car instances to prevent unbounded GLB clone growth
+    const MAX_CARS = 8;
+
     // Load car models
     const carContainers: BABYLON.AssetContainer[] = [];
     const activeCars: CarInstance[] = [];
@@ -79,11 +82,12 @@ export function createRoadsideCars(
         if (!meshRoot) return null;
 
         meshRoot.parent = root;
-        shadowGenerator.addShadowCaster(meshRoot, true);
+        // MEMORY: Skip shadow casting for roadside cars (decorative, edge of road)
+        // shadowGenerator.addShadowCaster(meshRoot, true);
 
-        // Enable shadows on children
+        // Disable shadows on children for memory savings
         meshRoot.getChildMeshes().forEach(child => {
-            child.receiveShadows = true;
+            child.receiveShadows = false;
         });
 
         return meshRoot;
@@ -94,6 +98,9 @@ export function createRoadsideCars(
         let car = carPool.find(c => !c.active);
 
         if (!car) {
+            // MEMORY: Don't create new cars if pool is at capacity
+            if (carPool.length >= MAX_CARS) return;
+
             const mesh = getRandomCar();
             if (!mesh) return;
 
