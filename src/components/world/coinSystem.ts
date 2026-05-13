@@ -63,7 +63,7 @@ export function createCoinSystem(
     function initMaterials() {
         // Face material with bitcoin texture
         coinFaceMaterial = new BABYLON.PBRMaterial("coinFaceMat", scene);
-        coinTexture = new BABYLON.Texture("/scene/assets/model/coin/bitcoin_face.png", scene);
+        coinTexture = new BABYLON.Texture("/scene/assets/model/coin/bitcoin_face.webp", scene);
         coinFaceMaterial.albedoTexture = coinTexture;
         coinFaceMaterial.metallic = 0.85;
         coinFaceMaterial.roughness = 0.3;
@@ -156,8 +156,6 @@ export function createCoinSystem(
         new BABYLON.SubMesh(1, 0, vertexCount, tubeIndices, capIndices, coin);           // Top cap
         new BABYLON.SubMesh(2, 0, vertexCount, tubeIndices + capIndices, capIndices, coin); // Bottom cap
 
-        // Add shadow casting
-        shadowGenerator.addShadowCaster(coin, true);
         coin.receiveShadows = true;
 
         // Hide source mesh initially? No, the first one is used as a pool item too.

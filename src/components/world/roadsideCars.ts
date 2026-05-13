@@ -79,8 +79,6 @@ export function createRoadsideCars(
         if (!meshRoot) return null;
 
         meshRoot.parent = root;
-        shadowGenerator.addShadowCaster(meshRoot, true);
-
         // Enable shadows on children
         meshRoot.getChildMeshes().forEach(child => {
             child.receiveShadows = true;

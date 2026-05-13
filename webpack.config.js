@@ -92,7 +92,24 @@ module.exports = {
           to: '.',
           filter: (resourcePath) => {
             // index.html is already handled by HtmlWebpackPlugin
-            return !resourcePath.endsWith('index.html');
+            if (resourcePath.endsWith('index.html')) return false;
+
+            const normalized = resourcePath.replace(/\\/g, '/');
+            const unusedAssetPatterns = [
+              /\/scene\/assets\/model\/player_old\.glb$/i,
+              /\/scene\/assets\/model\/temp_player\.(gltf|bin)$/i,
+              /\/scene\/assets\/model\/buffer\.bin$/i,
+              /\/scene\/assets\/model\/baseColor\.png$/i,
+              /\/scene\/assets\/model\/output$/i,
+              /\/scene\/assets\/model\/analyze-anim\.js$/i,
+              /\/scene\/assets\/model\/coin\/Bitcoin\.glb$/i,
+              /\/scene\/assets\/model\/coin\/bitcoin_face\.png$/i,
+              /\/scene\/assets\/road\/(asphalt_top|asphalt_dirt_side|dirt_sides)\.png$/i,
+              /\/intro-screen_old\.png$/i,
+              /\/OutroOverlay_old\.png$/i,
+            ];
+
+            return !unusedAssetPatterns.some((pattern) => pattern.test(normalized));
           },
         },
       ],
@@ -102,7 +119,12 @@ module.exports = {
       // and not allow any straggling "old" SWs to hang around
       clientsClaim: true,
       skipWaiting: true,
-      maximumFileSizeToCacheInBytes: 30000000, // 30MB limit for GLB files!
+      maximumFileSizeToCacheInBytes: 2500000,
+      exclude: [
+        /scene\/assets\/model\/.*\.glb$/i,
+        /sounds\/.*\.(mp3|wav)$/i,
+        /\.(webm|mp4)$/i,
+      ],
     }),
   ],
   devServer: {

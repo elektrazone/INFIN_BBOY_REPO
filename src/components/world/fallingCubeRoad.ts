@@ -432,9 +432,6 @@ export function createFallingCubeRoad(
                     instance.alwaysSelectAsActiveMesh = true;
                     instance.doNotSyncBoundingInfo = true;
 
-                    // Add to shadow caster
-                    shadowGenerator.addShadowCaster(instance, true);
-
                     const isCenter = isCellCenter(gx, gz);
                     if (isCenter) cellCenterCount++;
 

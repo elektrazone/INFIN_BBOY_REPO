@@ -211,7 +211,6 @@ export function createWorldSegments(
       inst.receiveShadows = true;
       inst.alwaysSelectAsActiveMesh = true;
       inst.doNotSyncBoundingInfo = true;
-      shadowGenerator.addShadowCaster(inst, true);
     });
 
     return group;
@@ -493,7 +492,6 @@ export function createWorldSegments(
       for (const mesh of meshes) {
         mesh.doNotSyncBoundingInfo = true;
         mesh.receiveShadows = true;
-        shadowGenerator.addShadowCaster(mesh, true);
       }
     }
 

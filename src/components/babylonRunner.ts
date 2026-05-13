@@ -19,6 +19,8 @@ import { setupEnvironment } from "./world/environment";
 import { createUIManager } from "./ui/uiManager";
 import { useGameStore } from "../store/gameStore";
 import { initAudioManager, getAudioManager } from "./audio/audioManager";
+import { clearMaterialCache } from "./materials/MaterialFactory";
+import { ObstacleGLBBuilder } from "./obstacles/obstacleGLBBuilder";
 
 
 // Draco configuration
@@ -51,6 +53,13 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
     // Check for URL parameter quality overrides
     const urlParams = new URLSearchParams(window.location.search);
     const quality = urlParams.get('quality')?.toLowerCase() || urlParams.get('res')?.toLowerCase();
+
+    const savedScaling = localStorage.getItem('perf_scaling');
+    if (savedScaling && !quality) {
+      const scaling = Math.max(1, parseFloat(savedScaling) || PERFORMANCE_CONFIG.defaultHardwareScaling || 2.0);
+      engine.setHardwareScalingLevel(scaling);
+      return;
+    }
 
     if (quality === "ultra") {
       // Full native physical pixels (extremely sharp, heavy)
@@ -196,9 +205,10 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
   applyCanvasSize();
 
   // Prevent context menu to allow Right-Click Panning
-  canvas.addEventListener("contextmenu", (e) => {
+  const onContextMenu = (e: MouseEvent) => {
     e.preventDefault();
-  });
+  };
+  canvas.addEventListener("contextmenu", onContextMenu);
 
   // --------------------------------------------
   // SCENE + ENGINE
@@ -431,7 +441,7 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
   // --------------------------------------------
   const keysPressed: Record<string, boolean> = {};
 
-  window.addEventListener("keydown", (ev) => {
+  const onGlobalKeyDown = (ev: KeyboardEvent) => {
     keysPressed[ev.key] = true;
 
     // Camera Capture Hotkey (Shift + C) - Gameplay
@@ -539,12 +549,16 @@ Target: (${camera.target.x.toFixed(1)}, ${camera.target.y.toFixed(1)}, ${camera.
     }
 
     onKeyDown(ev);
-  });
+  };
 
-  window.addEventListener("keyup", (ev) => {
+  window.addEventListener("keydown", onGlobalKeyDown);
+
+  const onGlobalKeyUp = (ev: KeyboardEvent) => {
     keysPressed[ev.key] = false;
     onKeyUp(ev);
-  });
+  };
+
+  window.addEventListener("keyup", onGlobalKeyUp);
 
   window.addEventListener("touchstart", onTouchStart, { passive: true });
   window.addEventListener("touchmove", onTouchMove, { passive: true });
@@ -562,10 +576,11 @@ Target: (${camera.target.x.toFixed(1)}, ${camera.target.y.toFixed(1)}, ${camera.
   let demoCameraMode = false;
   let previousDemoCameraMode = false;
 
-  window.addEventListener("toggleDemoCameraMode", () => {
+  const onToggleDemoCameraMode = () => {
     demoCameraMode = !demoCameraMode;
     console.log(`Demo Camera Mode: ${demoCameraMode ? "ON" : "OFF"}`);
-  });
+  };
+  window.addEventListener("toggleDemoCameraMode", onToggleDemoCameraMode);
 
   // Save camera orbit state when pausing or entering demo mode
   let savedCameraState: {
@@ -666,22 +681,35 @@ Target: (${camera.target.x.toFixed(1)}, ${camera.target.y.toFixed(1)}, ${camera.
   window.addEventListener("stopRenderLoop", stopRenderHandler);
 
   // Global cleanup function to be called before reloading the page to prevent memory leaks (WebGL, AudioContext)
-  (window as any).performGameCleanup = () => {
+  let cleanedUp = false;
+  const performGameCleanup = () => {
+    if (cleanedUp) return;
+    cleanedUp = true;
     console.log("🧹 Performing explicit game cleanup...");
+    engine?.stopRenderLoop();
+    unsubscribeIntro();
+    canvas.removeEventListener("contextmenu", onContextMenu);
     window.removeEventListener("stopRenderLoop", stopRenderHandler);
     window.removeEventListener("resize", onResize);
-    window.removeEventListener("keydown", onKeyDown);
-    window.removeEventListener("keyup", onKeyUp);
+    window.removeEventListener("keydown", onGlobalKeyDown);
+    window.removeEventListener("keyup", onGlobalKeyUp);
+    window.removeEventListener("keydown", unlockAudioOnInteraction);
+    window.removeEventListener("pointerdown", unlockAudioOnInteraction);
+    window.removeEventListener("touchstart", unlockAudioOnInteraction);
     window.removeEventListener("touchstart", onTouchStart);
     window.removeEventListener("touchmove", onTouchMove);
     window.removeEventListener("touchend", onTouchEnd);
     window.removeEventListener("pointerdown", onPointerDown);
     window.removeEventListener("pointerup", onPointerUp);
+    window.removeEventListener("toggleDemoCameraMode", onToggleDemoCameraMode);
+    window.removeEventListener("beforeunload", performGameCleanup);
 
     environment.dispose();
     player.dispose();
     uiManager.dispose();
     audioManager.dispose(); // CRITICAL: Stop audio and close AudioContexts
+    ObstacleGLBBuilder.disposeCache();
+    clearMaterialCache();
 
     BABYLON.Logger.ClearLogCache();
     BABYLON.Logger.LogLevels = BABYLON.Logger.AllLogLevel;
@@ -689,9 +717,10 @@ Target: (${camera.target.x.toFixed(1)}, ${camera.target.y.toFixed(1)}, ${camera.
     engine?.dispose();
     console.log("✅ Cleanup complete.");
   };
+  (window as any).performGameCleanup = performGameCleanup;
 
   // Still hook it up to beforeunload just in case the browser or user refreshes normally
-  window.addEventListener("beforeunload", (window as any).performGameCleanup);
+  window.addEventListener("beforeunload", performGameCleanup);
 
   // Expose engine/scene globally for performance monitoring
   (window as any).__BABYLON_ENGINE__ = engine;

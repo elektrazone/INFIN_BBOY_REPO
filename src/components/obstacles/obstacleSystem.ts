@@ -465,7 +465,10 @@ export function createObstacleSystem(
 
   function dispose() {
     if (observer) scene.onBeforeRenderObservable.remove(observer);
-    obstaclePool.forEach((o) => o.mesh.dispose());
+    obstaclePool.forEach((o) => {
+      shadowGenerator.removeShadowCaster(o.mesh, true);
+      o.mesh.dispose(false, true);
+    });
     root.dispose();
   }
   function getActiveObstacles() { return activeObstacles; }

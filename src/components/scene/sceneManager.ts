@@ -8,7 +8,10 @@ import { CAMERA_DEFAULTS } from "../../config/cameraDefaults";
 export function createScene(canvas: HTMLCanvasElement) {
     const engine = new BABYLON.Engine(canvas, true, {
         premultipliedAlpha: false,  // Required for CSS sky to show through transparent areas
-        alpha: true                 // Enable WebGL alpha channel
+        alpha: true,                // Enable WebGL alpha channel
+        stencil: false,
+        preserveDrawingBuffer: false,
+        powerPreference: "high-performance",
     });
 
     // Logger config
@@ -30,10 +33,14 @@ export function createScene(canvas: HTMLCanvasElement) {
 
     // Create environment texture for PBR reflections
     // This enables reflections on metallic/shiny surfaces
-    scene.environmentTexture = BABYLON.CubeTexture.CreateFromPrefilteredData(
-        "https://assets.babylonjs.com/environments/environmentSpecular.env",
-        scene
-    );
+    const savedMaterials = localStorage.getItem('perf_mats');
+    const useStandardMaterials = savedMaterials !== null ? savedMaterials === 'true' : true;
+    if (!useStandardMaterials) {
+        scene.environmentTexture = BABYLON.CubeTexture.CreateFromPrefilteredData(
+            "https://assets.babylonjs.com/environments/environmentSpecular.env",
+            scene
+        );
+    }
     scene.environmentIntensity = 0.4; // Subtle reflections
 
     // Transparent background so CSS sky layer shows through
@@ -83,14 +90,14 @@ export function createLighting(scene: BABYLON.Scene) {
 
     // Check if shadows should be enabled from saved performance settings
     const savedShadows = localStorage.getItem('perf_shadows');
-    const shadowsEnabled = savedShadows !== null ? savedShadows === 'true' : true;
+    const shadowsEnabled = savedShadows !== null ? savedShadows === 'true' : false;
     
     // Mobile detection for performance optimization
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
     // Use Cascaded Shadow Maps for consistent shadows over long distances
     // Reduced quality on mobile for better performance
-    const shadowMapSize = isMobile ? 1024 : 2048;
+    const shadowMapSize = isMobile ? 512 : 1024;
     const shadowGenerator = new BABYLON.CascadedShadowGenerator(shadowMapSize, directionalLight);
     
     if (!shadowsEnabled) {
@@ -99,7 +106,7 @@ export function createLighting(scene: BABYLON.Scene) {
         if (shadowMap) shadowMap.refreshRate = 0;
     }
 
-    shadowGenerator.numCascades = isMobile ? 2 : 4; // Fewer cascades on mobile
+    shadowGenerator.numCascades = isMobile ? 1 : 2; // Fewer cascades on kiosk hardware
     shadowGenerator.lambda = 0.9; // Blend factor between logarithmic and linear distribution
     shadowGenerator.cascadeBlendPercentage = 0.1; // Smooth blending between cascades
     shadowGenerator.stabilizeCascades = true; // Reduce shadow swimming/flickering

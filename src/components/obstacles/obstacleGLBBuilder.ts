@@ -15,9 +15,13 @@ export class ObstacleGLBBuilder {
     };
 
     private static loaded = false;
+    private static sceneUid: string | null = null;
 
     public static async preloadAll(scene: Scene, modelMap: ObstacleModelMap): Promise<void> {
-        if (this.loaded) return;
+        if (this.loaded && this.sceneUid === scene.uid) return;
+        if (this.loaded && this.sceneUid !== scene.uid) {
+            this.disposeCache();
+        }
 
         const loadPromises: Promise<void>[] = [];
 
@@ -43,7 +47,20 @@ export class ObstacleGLBBuilder {
 
         await Promise.all(loadPromises);
         this.loaded = true;
+        this.sceneUid = scene.uid;
         console.log("Obstacle GLBs preloaded:", this.cache);
+    }
+
+    public static disposeCache(): void {
+        for (const typeKey in this.cache) {
+            const type = typeKey as ObstacleType;
+            for (const entry of this.cache[type]) {
+                entry.container.dispose();
+            }
+            this.cache[type] = [];
+        }
+        this.loaded = false;
+        this.sceneUid = null;
     }
 
     public static getVariantCount(type: ObstacleType): number {

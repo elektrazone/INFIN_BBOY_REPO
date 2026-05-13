@@ -62,6 +62,7 @@ const PerformanceMonitor: React.FC = () => {
     const fpsHistoryRef = useRef<number[]>([]);
     const gpuHistoryRef = useRef<number[]>([]);
     const instrumentationRef = useRef<BABYLON.SceneInstrumentation | null>(null);
+    const observerRef = useRef<BABYLON.Nullable<BABYLON.Observer<BABYLON.Scene>>>(null);
 
     useEffect(() => {
         // Wait for Babylon to initialize
@@ -80,6 +81,11 @@ const PerformanceMonitor: React.FC = () => {
             if (instrumentationRef.current) {
                 instrumentationRef.current.dispose();
             }
+            const scene = window.__BABYLON_SCENE__;
+            if (scene && observerRef.current) {
+                scene.onAfterRenderObservable.remove(observerRef.current);
+                observerRef.current = null;
+            }
         };
     }, []);
 
@@ -95,7 +101,7 @@ const PerformanceMonitor: React.FC = () => {
 
         let frameCount = 0;
 
-        const observer = scene.onAfterRenderObservable.add(() => {
+        observerRef.current = scene.onAfterRenderObservable.add(() => {
             frameCount++;
 
             // Only update every ~15 frames for performance
@@ -149,10 +155,6 @@ const PerformanceMonitor: React.FC = () => {
             });
         });
 
-        // Store observer for cleanup
-        return () => {
-            scene.onAfterRenderObservable.remove(observer);
-        };
     };
 
     // Toggle visibility with backtick key

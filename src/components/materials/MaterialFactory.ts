@@ -385,7 +385,7 @@ export function getLayeredRoadMaterial(scene: BABYLON.Scene): BABYLON.MultiMater
     // Create sub-materials
     // 1. Asphalt Top
     const asphaltMat = new BABYLON.PBRMaterial("asphaltTopMat", scene);
-    asphaltMat.albedoTexture = new BABYLON.Texture("./scene/assets/road/asphalt_top.png", scene);
+    asphaltMat.albedoTexture = new BABYLON.Texture("./scene/assets/road/asphalt_top.webp", scene);
     asphaltMat.metallic = 0.0;
     asphaltMat.roughness = 0.8;
     asphaltMat.freeze(); // Freeze for performance
@@ -393,7 +393,7 @@ export function getLayeredRoadMaterial(scene: BABYLON.Scene): BABYLON.MultiMater
     // 2. Dirt Sides (with Asphalt Top Thickness)
     const asphaltDirtSideMat = new BABYLON.PBRMaterial("asphaltDirtSideMat", scene);
     // Setting invertY to false because Babylon.js flips textures by default
-    asphaltDirtSideMat.albedoTexture = new BABYLON.Texture("./scene/assets/road/asphalt_dirt_side.png", scene, false, false);
+    asphaltDirtSideMat.albedoTexture = new BABYLON.Texture("./scene/assets/road/asphalt_dirt_side.webp", scene, false, false);
 
     // Fix texture orientation: Reverting global rotation as it breaks some faces
     // if (asphaltDirtSideMat.albedoTexture) {
@@ -406,7 +406,7 @@ export function getLayeredRoadMaterial(scene: BABYLON.Scene): BABYLON.MultiMater
 
     // 3. Dirt Bottom (Pure Dirt)
     const dirtBottomMat = new BABYLON.PBRMaterial("dirtBottomMat", scene);
-    dirtBottomMat.albedoTexture = new BABYLON.Texture("./scene/assets/road/dirt_sides.png", scene);
+    dirtBottomMat.albedoTexture = new BABYLON.Texture("./scene/assets/road/dirt_sides.webp", scene);
     dirtBottomMat.metallic = 0.0;
     dirtBottomMat.roughness = 0.9;
     dirtBottomMat.freeze(); // Freeze for performance
