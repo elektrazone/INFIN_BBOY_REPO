@@ -31,7 +31,7 @@ const CONFIG = {
     triggerZoneEnd: -280,
 
     // Fall probability per frame when in trigger zone
-    fallProbabilityPerSecond: 0.048, // Reduced from 0.06375 for more reaction time
+    fallProbabilityPerSecond: 0.036, // Reduced by 25% from 0.048 per user request
 
     // Maximum adjacent missing cubes (controls gap size)
     maxAdjacentGaps: 1,

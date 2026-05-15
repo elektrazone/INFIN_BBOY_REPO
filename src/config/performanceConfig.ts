@@ -7,8 +7,8 @@
  * They prioritize pixel-fill throughput and low-latency rendering.
  */
 export const PERFORMANCE_CONFIG = {
-    // 2.0 = Renders 3D at 1080p internal resolution on a 4K screen
-    defaultHardwareScaling: 2.0,
+    // 1.5 = Renders 3D at 1440p internal resolution on a 4K screen
+    defaultHardwareScaling: 1.5,
     
     // Whether to use simpler StandardMaterials instead of PBR by default
     // Set to true for maximum fill-rate performance

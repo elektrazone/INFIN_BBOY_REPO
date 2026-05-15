@@ -134,12 +134,12 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
         canvas.style.top = `${topPx}px`;
         canvas.style.transform = 'translate(-50%, 0)';
 
-        // IMPORTANT: WebGL internal rendering buffer LOCKED to exactly 1080x1920 for performance!
-        canvas.width = 1080;
-        canvas.height = 1920;
-        engine?.setHardwareScalingLevel(1.0);
+        // IMPORTANT: WebGL internal rendering buffer upgraded to 1440p (2560x1440)
+        canvas.width = 1440;
+        canvas.height = 2560;
+        engine?.setHardwareScalingLevel(1.5); // 1.5 Scaling on 4K = 1440p internal resolution
 
-        console.log(`🖥️ Display: 1080p Square View Active (scale: ${scale.toFixed(3)})`);
+        console.log(`🖥️ Display: 1440p View Active (Hardware Scaling: 1.5)`);
 
         // Sync sky background to match canvas
         if (skyEl) {

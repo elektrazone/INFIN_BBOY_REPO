@@ -18,7 +18,12 @@
   "scripts": {
     "start": "webpack serve --mode development --open",
     "dev": "webpack serve --mode development --open",
-    "build": "node scripts/sync-camera.js && webpack --mode production"
+    "dev:nolan": "cross-env PORT=3001 OUT_DIR=dist_nolan webpack serve --mode development --open",
+    "dev:main": "cross-env PORT=3002 OUT_DIR=dist_main webpack serve --mode development --open",
+    "build": "node scripts/sync-camera.js && webpack --mode production",
+    "build:nolan": "node scripts/sync-camera.js && cross-env OUT_DIR=dist_nolan webpack --mode production",
+    "build:main": "node scripts/sync-camera.js && cross-env OUT_DIR=dist_main webpack --mode production",
+    "build:compare": "powershell -ExecutionPolicy Bypass -File scripts/build-comparison.ps1"
   },
   "devDependencies": {
     "@gltf-transform/cli": "^4.2.1",

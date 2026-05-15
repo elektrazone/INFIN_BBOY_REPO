@@ -42,7 +42,7 @@ export function createScene(canvas: HTMLCanvasElement) {
     // ==========================================================================
     // IMAGE PROCESSING - Color vibrancy and saturation
     // ==========================================================================
-    scene.imageProcessingConfiguration.isEnabled = true;
+    scene.imageProcessingConfiguration.isEnabled = true; // Re-enabled for vibrancy
     scene.imageProcessingConfiguration.contrast = 1.3;      // Boost contrast
     scene.imageProcessingConfiguration.exposure = 1.1;      // Slightly brighter
 
