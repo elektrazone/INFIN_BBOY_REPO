@@ -17,10 +17,22 @@ export interface GameEventMessage {
 /**
  * MessagingService handles communication between the game and a parent container
  * (e.g., via iframe postMessage).
+ *
+ * Security: both directions are restricted to an allowlist of trusted origins.
+ * - Outgoing messages are posted to each trusted origin; the browser only
+ *   delivers to the parent whose origin actually matches, so no data leaks to
+ *   an unexpected embedder.
+ * - Incoming messages are ignored unless event.origin is trusted.
+ *
+ * By default the allowlist contains this page's own origin plus the parent's
+ * origin inferred from document.referrer (set when embedded in an iframe).
+ * An embedder on a different origin can call `configure([...])` before/at init
+ * to register additional trusted origins.
  */
 export class MessagingService {
     private static instance: MessagingService;
     private initialized = false;
+    private trustedOrigins: string[] = [];
 
     private constructor() { }
 
@@ -32,23 +44,67 @@ export class MessagingService {
     }
 
     /**
-     * Initializes the messaging service and starts listening for incoming messages
+     * Register additional trusted parent origins (e.g. "https://host.example").
+     * Can be called before or after init(). Duplicates and falsy values are ignored.
      */
-    public init(): void {
-        if (this.initialized) return;
-
-        window.addEventListener('message', this.handleIncomingMessage.bind(this));
-        this.initialized = true;
-        console.log('✉️ MessagingService initialized');
+    public configure(origins: string[]): void {
+        for (const origin of origins) {
+            if (origin && !this.trustedOrigins.includes(origin)) {
+                this.trustedOrigins.push(origin);
+            }
+        }
     }
 
     /**
-     * Sends a message to the parent window
+     * Computes the default trusted origins: this page's origin plus, when the
+     * game is embedded, the referring parent's origin.
+     */
+    private computeDefaultOrigins(): string[] {
+        const list: string[] = [window.location.origin];
+        try {
+            if (document.referrer) {
+                const refOrigin = new URL(document.referrer).origin;
+                if (refOrigin && !list.includes(refOrigin)) {
+                    list.push(refOrigin);
+                }
+            }
+        } catch {
+            // Malformed referrer — ignore.
+        }
+        return list;
+    }
+
+    private isTrusted(origin: string): boolean {
+        return this.trustedOrigins.includes(origin);
+    }
+
+    /**
+     * Initializes the messaging service and starts listening for incoming messages.
+     * @param origins Optional explicit allowlist of trusted parent origins. When
+     *                omitted, a sensible default (same-origin + referrer) is used.
+     */
+    public init(origins?: string[]): void {
+        if (this.initialized) return;
+
+        // Seed defaults, then merge any explicitly provided origins.
+        this.configure(this.computeDefaultOrigins());
+        if (origins) this.configure(origins);
+
+        window.addEventListener('message', this.handleIncomingMessage.bind(this));
+        this.initialized = true;
+        console.log('✉️ MessagingService initialized. Trusted origins:', this.trustedOrigins);
+    }
+
+    /**
+     * Sends a message to the parent window. The message is posted to each
+     * trusted origin; the browser delivers it only to the parent whose origin
+     * matches, so untrusted embedders never receive game data.
      */
     public sendMessage(message: GameEventMessage): void {
         console.log('✉️ Sending message to parent:', message);
-        // '*' is used for development flexibility, ideally this should be restricted to specific origins
-        window.parent.postMessage(message, '*');
+        for (const origin of this.trustedOrigins) {
+            window.parent.postMessage(message, origin);
+        }
     }
 
     /**
@@ -75,7 +131,13 @@ export class MessagingService {
      * Handles messages received from the parent window
      */
     private handleIncomingMessage(event: MessageEvent): void {
-        const { type } = event.data;
+        // Reject anything from an untrusted origin.
+        if (!this.isTrusted(event.origin)) {
+            console.warn('✉️ Ignored message from untrusted origin:', event.origin);
+            return;
+        }
+
+        const { type } = event.data ?? {};
 
         if (!type) return;
 
