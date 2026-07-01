@@ -382,14 +382,7 @@ const PerformanceMonitor: React.FC = () => {
         const newState = !skyEnabled;
         const skyEl = document.getElementById('sky-background');
         if (skyEl) {
-            if (newState) {
-                skyEl.style.backgroundImage = "url('/scene/assets/sky_clouds.jpg')";
-                skyEl.style.animation = 'cloud-drift 120s linear infinite';
-            } else {
-                skyEl.style.backgroundImage = 'none';
-                skyEl.style.backgroundColor = '#4a90d9';
-                skyEl.style.animation = 'none';
-            }
+            skyEl.style.backgroundColor = newState ? '#4a90d9' : 'transparent';
         }
 
         setSkyEnabled(newState);

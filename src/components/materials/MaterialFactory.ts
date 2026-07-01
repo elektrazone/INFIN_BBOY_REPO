@@ -421,6 +421,29 @@ export function getLayeredRoadMaterial(scene: BABYLON.Scene): BABYLON.MultiMater
 }
 
 /**
+ * Get or create the cloud material: bright white, lit normally so a dedicated
+ * blue underlight (see clouds.ts) can wash the shadowed undersides with a
+ * sky-bounce blue while the sunlit tops stay bright white and fluffy.
+ */
+export function getCloudMaterial(scene: BABYLON.Scene): BABYLON.StandardMaterial {
+    const key = "cloudMat";
+    if (materialCache.has(key)) {
+        return materialCache.get(key) as any;
+    }
+
+    const mat = new BABYLON.StandardMaterial(key, scene);
+    mat.diffuseColor = BABYLON.Color3.White();
+    mat.specularColor = BABYLON.Color3.Black();
+    // Small ambient glow floor so shadowed facets never crush to black/gray.
+    mat.emissiveColor = new BABYLON.Color3(0.12, 0.12, 0.14);
+    mat.backFaceCulling = false;
+
+    materialCache.set(key, mat as any);
+    mat.freeze();
+    return mat;
+}
+
+/**
  * Clear material cache (useful for scene disposal)
  */
 export function clearMaterialCache(): void {

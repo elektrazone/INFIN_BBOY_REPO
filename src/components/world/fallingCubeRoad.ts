@@ -23,8 +23,9 @@ const CONFIG = {
     segmentCount: 2,
 
     // Falling physics
-    fallGravity: 2500, // Very fast gravity
-    fallMaxSpeed: 4000, // Higher terminal velocity
+    fallGravity: 300, // Slower, more graceful gravity
+    fallMaxSpeed: 550, // Lower terminal velocity
+    fallTumbleSpeed: 1.2, // Max rotation speed (rad/s) while falling, for a graceful tumble
 
     // Trigger zone (relative to player Z position)
     triggerZoneStart: -120,
@@ -50,6 +51,7 @@ interface CubeData {
     instance: BABYLON.InstancedMesh;
     state: CubeState;
     fallVelocity: number;
+    fallTumble: BABYLON.Vector3; // Rotation speed while falling, for a graceful tumble
     originalY: number;
     gridX: number;
     gridZ: number;
@@ -384,6 +386,16 @@ export function createFallingCubeRoad(
         return `${cube.segmentIndex}_${cube.gridX}_${cube.gridZ}`;
     }
 
+    // Random gentle rotation speed for a graceful tumble while falling
+    function randomTumble(): BABYLON.Vector3 {
+        const s = CONFIG.fallTumbleSpeed;
+        return new BABYLON.Vector3(
+            (Math.random() - 0.5) * s,
+            (Math.random() - 0.5) * s,
+            (Math.random() - 0.5) * s
+        );
+    }
+
     // Helper to check if a cube is the center of a 3x3 cell
     function isCellCenter(gx: number, gz: number): boolean {
         return (gx % 3 === 1) && (gz % 3 === 1);
@@ -442,6 +454,7 @@ export function createFallingCubeRoad(
                         instance,
                         state: "active",
                         fallVelocity: 0,
+                        fallTumble: BABYLON.Vector3.Zero(),
                         originalY: cubeY,
                         gridX: gx,
                         gridZ: gz,
@@ -603,6 +616,7 @@ export function createFallingCubeRoad(
 
             if (!DEBUG_DISABLE_HOLES && cube.instance.position.z > triggerZ && cube.state === "active") {
                 cube.state = "falling";
+                cube.fallTumble = randomTumble();
 
                 // Spawn debris for visual crumbling effect
                 spawnDebris(
@@ -611,8 +625,8 @@ export function createFallingCubeRoad(
                     cube.instance.position.z
                 );
 
-                // Hide the original cube immediately (debris replaces it visually)
-                cube.instance.isVisible = false;
+                // Let the cube visibly fall and tumble alongside the debris,
+                // instead of popping out of existence immediately.
             }
 
             // B) Loop when very far behind
@@ -625,6 +639,7 @@ export function createFallingCubeRoad(
                     cube.state = "active";
                     cube.fallVelocity = 0;
                     cube.instance.position.y = cube.originalY;
+                    cube.instance.rotation.set(0, 0, 0);
                     cube.instance.isVisible = true;
                     fallenCubePositions.delete(getCubeKey(cube));
                 }
@@ -640,6 +655,11 @@ export function createFallingCubeRoad(
                     CONFIG.fallMaxSpeed
                 );
                 cube.instance.position.y -= cube.fallVelocity * dt;
+
+                // Graceful tumble while falling
+                cube.instance.rotation.x += cube.fallTumble.x * dt;
+                cube.instance.rotation.y += cube.fallTumble.y * dt;
+                cube.instance.rotation.z += cube.fallTumble.z * dt;
 
                 // Check if fallen far enough to become a gap
                 // BUT: If it's a rear-falling cube (z > rearFallZ), keep it visible!
@@ -682,6 +702,7 @@ export function createFallingCubeRoad(
                             // Trigger this cube
                             cube.state = "falling";
                             cube.fallVelocity = 0;
+                            cube.fallTumble = randomTumble();
 
                             // Randomly decide hole size (1-4 cubes in 2x2 pattern)
                             // 40% chance = 1 cube, 30% = 2 cubes, 20% = 3 cubes, 10% = 4 cubes
@@ -724,6 +745,7 @@ export function createFallingCubeRoad(
                                 if (adjacent && canCubeFallForPattern(adjacent)) {
                                     adjacent.state = "falling";
                                     adjacent.fallVelocity = 0;
+                                    adjacent.fallTumble = randomTumble();
                                 }
                             }
                         }
@@ -850,6 +872,7 @@ export function createFallingCubeRoad(
             cube.state = "active";
             cube.fallVelocity = 0;
             cube.instance.position.y = cube.originalY;
+            cube.instance.rotation.set(0, 0, 0);
             cube.instance.isVisible = true;
         }
         fallenCubePositions.clear();
@@ -875,6 +898,7 @@ export function createFallingCubeRoad(
                     cube.state = "active";
                     cube.fallVelocity = 0;
                     cube.instance.position.y = cube.originalY;
+                    cube.instance.rotation.set(0, 0, 0);
                     cube.instance.isVisible = true;
                     // Remove from fallen tracking
                     fallenCubePositions.delete(getCubeKey(cube));
@@ -906,6 +930,7 @@ export function createFallingCubeRoad(
                     if (cube.state === "active") {
                         cube.state = "falling";
                         cube.fallVelocity = 0;
+                        cube.fallTumble = randomTumble();
 
                         // Spawn debris for visual effect
                         spawnDebris(

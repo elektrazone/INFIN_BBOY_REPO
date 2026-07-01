@@ -7,6 +7,7 @@ import { createObstacleSystem, ObstacleController } from "../obstacles/obstacleS
 import { createCoinSystem, CoinController } from "./coinSystem";
 import { createRoadsideCars, RoadsideCarsController } from "./roadsideCars";
 import { createFallingCubeRoad, FallingCubeRoadController } from "./fallingCubeRoad";
+import { createClouds } from "./clouds";
 
 export interface EnvironmentController {
   obstacleController: ObstacleController;
@@ -77,6 +78,11 @@ export function setupEnvironment(
   );
 
   // ------------------------------------------------------
+  // 5.5) SKY CLOUDS (varied GLB clouds, white with blue fresnel falloff)
+  // ------------------------------------------------------
+  const cloudsController = createClouds(scene, getScrollSpeed);
+
+  // ------------------------------------------------------
   // 6) OBSTACLE SYSTEM (jump / duck / platform)
   // ------------------------------------------------------
   const obstacleController: ObstacleController = createObstacleSystem(
@@ -112,6 +118,7 @@ export function setupEnvironment(
     obstacleController.dispose();
     coinController.dispose();
     roadsideCarsController.dispose();
+    cloudsController.dispose();
     fallingCubeRoadController.dispose();
     scrollController.dispose();
     world.dispose();

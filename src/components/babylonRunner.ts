@@ -240,9 +240,7 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
   const savedSky = localStorage.getItem('perf_sky');
   const skyInitEl = document.getElementById('sky-background');
   if (skyInitEl && savedSky === 'false') {
-    skyInitEl.style.backgroundImage = 'none';
-    skyInitEl.style.backgroundColor = '#4a90d9';
-    skyInitEl.style.animation = 'none';
+    skyInitEl.style.backgroundColor = 'transparent';
   }
 
   // --------------------------------------------
@@ -283,15 +281,32 @@ export function babylonRunner(canvas: HTMLCanvasElement) {
   // --------------------------------------------
   let playerReady = false;
   let obstaclesReady = false;
+  let loadingResolved = false;
+
+  function finishLoading() {
+    if (loadingResolved) return;
+    loadingResolved = true;
+    window.clearTimeout(loadingTimeoutId);
+    useGameStore.getState().setLoading(false);
+    // Auto-start: dismiss intro screen immediately
+    useGameStore.getState().dismissIntroScreen();
+  }
 
   function checkAllReady() {
     if (playerReady && obstaclesReady) {
       console.log("✅ All assets loaded - starting automatically");
-      useGameStore.getState().setLoading(false);
-      // Auto-start: dismiss intro screen immediately
-      useGameStore.getState().dismissIntroScreen();
+      finishLoading();
     }
   }
+
+  // Safety net: a stalled network/GLB load should never leave the player stuck
+  // on the loading screen forever. Force-start if readiness never arrives.
+  const loadingTimeoutId = window.setTimeout(() => {
+    if (!loadingResolved) {
+      console.warn("⚠️ Asset loading timed out - starting anyway", { playerReady, obstaclesReady });
+      finishLoading();
+    }
+  }, 20000);
 
   // Start countdown only when intro screen is dismissed (user taps TAP TO START)
   let countdownStarted = false;
@@ -681,6 +696,7 @@ Target: (${camera.target.x.toFixed(1)}, ${camera.target.y.toFixed(1)}, ${camera.
   // Global cleanup function to be called before reloading the page to prevent memory leaks (WebGL, AudioContext)
   (window as any).performGameCleanup = () => {
     console.log("🧹 Performing explicit game cleanup...");
+    window.clearTimeout(loadingTimeoutId);
     window.removeEventListener("stopRenderLoop", stopRenderHandler);
     window.removeEventListener("resize", onResize);
     window.removeEventListener("keydown", onKeyDown);

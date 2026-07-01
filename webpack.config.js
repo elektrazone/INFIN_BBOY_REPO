@@ -3,9 +3,10 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const WorkboxPlugin = require('workbox-webpack-plugin');
 
-module.exports = (env) => {
+module.exports = (env, argv) => {
   const outDir = env.OUT_DIR || process.env.OUT_DIR || 'dist';
   const port = env.PORT || process.env.PORT || 3001;
+  const isProduction = argv.mode === 'production';
 
   return {
     entry: './src/main.ts',
@@ -104,7 +105,10 @@ module.exports = (env) => {
           },
         ],
       }),
-      new WorkboxPlugin.GenerateSW({
+      // Service worker precaching is production-only: regenerating it on every
+      // dev-server HMR rebuild caused it to seize control mid-session and serve
+      // stale cached bundles, producing a "Loading assets..." reload loop.
+      ...(isProduction ? [new WorkboxPlugin.GenerateSW({
         clientsClaim: true,
         skipWaiting: true,
         maximumFileSizeToCacheInBytes: 2500000,
@@ -113,7 +117,7 @@ module.exports = (env) => {
           /sounds\/.*\.(mp3|wav)$/i,
           /\.(webm|mp4)$/i,
         ],
-      }),
+      })] : []),
     ],
     devServer: {
       static: {
