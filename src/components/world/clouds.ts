@@ -19,10 +19,12 @@ export function createClouds(
     const CLOUD_SPACING = 550;        // average distance between clouds along Z (sparser, more open sky)
     const CLOUD_NEAR_Z = -450;        // keep clouds well back so one doesn't loom huge up close
     const CLOUD_FIELD_LENGTH = 2400;  // total depth of the cloud field before recycling
-    const CLOUD_SCALE_MIN = 54;  // ~4.5x larger than the original 14-26 range, scaled down 15%
-    const CLOUD_SCALE_MAX = 99;
+    const CLOUD_SCALE_MIN = 46;  // scaled down another 15% from the 54-99 range
+    const CLOUD_SCALE_MAX = 84;
     const DESPAWN_Z = 100;
     const PARALLAX = 0.18; // clouds drift far slower than the road/buildings
+    const WIND_X_SPEED = 12; // slow right-to-left wind drift (units/sec), independent of gameplay scroll
+    const WIND_WRAP_X = CLOUD_X_RANGE * 1.5; // wrap distance, kept off-screen
 
     const cloudMaterial = getCloudMaterial(scene);
     const root = new BABYLON.TransformNode("clouds_root", scene);
@@ -116,10 +118,22 @@ export function createClouds(
     });
 
     const observer = scene.onBeforeRenderObservable.add(() => {
-        const speed = getScrollSpeed();
-        if (speed === 0 || cloudRoots.length === 0) return;
+        if (cloudRoots.length === 0) return;
 
         const dt = scene.getEngine().getDeltaTime() / 1000;
+
+        // Slow left-to-right wind drift, always active (independent of gameplay
+        // scroll) so the distant sky feels alive even when the road isn't moving.
+        for (const c of cloudRoots) {
+            c.position.x += WIND_X_SPEED * dt;
+            if (c.position.x > WIND_WRAP_X) {
+                c.position.x -= WIND_WRAP_X * 2;
+            }
+        }
+
+        const speed = getScrollSpeed();
+        if (speed === 0) return;
+
         const movement = speed * dt * PARALLAX;
 
         for (const c of cloudRoots) c.position.z += movement;

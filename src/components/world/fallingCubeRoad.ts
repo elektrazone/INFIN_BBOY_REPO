@@ -26,6 +26,7 @@ const CONFIG = {
     fallGravity: 300, // Slower, more graceful gravity
     fallMaxSpeed: 550, // Lower terminal velocity
     fallTumbleSpeed: 1.2, // Max rotation speed (rad/s) while falling, for a graceful tumble
+    fallShrinkAmount: 0.6, // Cube shrinks down to (1 - this) of its size while falling
 
     // Trigger zone (relative to player Z position)
     triggerZoneStart: -120,
@@ -640,6 +641,7 @@ export function createFallingCubeRoad(
                     cube.fallVelocity = 0;
                     cube.instance.position.y = cube.originalY;
                     cube.instance.rotation.set(0, 0, 0);
+                    cube.instance.scaling.setAll(1);
                     cube.instance.isVisible = true;
                     fallenCubePositions.delete(getCubeKey(cube));
                 }
@@ -660,6 +662,13 @@ export function createFallingCubeRoad(
                 cube.instance.rotation.x += cube.fallTumble.x * dt;
                 cube.instance.rotation.y += cube.fallTumble.y * dt;
                 cube.instance.rotation.z += cube.fallTumble.z * dt;
+
+                // Shrink as it falls so the hole's depth (dirt walls, road extension
+                // below) reads through sooner instead of staying fully occluded.
+                const fallDepth = cube.originalY - cube.instance.position.y;
+                const shrinkProgress = Math.min(1, fallDepth / (CONFIG.cubeSize * 3));
+                const scale = 1 - shrinkProgress * CONFIG.fallShrinkAmount;
+                cube.instance.scaling.setAll(scale);
 
                 // Check if fallen far enough to become a gap
                 // BUT: If it's a rear-falling cube (z > rearFallZ), keep it visible!
@@ -704,6 +713,13 @@ export function createFallingCubeRoad(
                             cube.fallVelocity = 0;
                             cube.fallTumble = randomTumble();
 
+                            // Break off a few small fragments for visual depth
+                            spawnDebris(
+                                cube.instance.position.x,
+                                cube.instance.position.y,
+                                cube.instance.position.z
+                            );
+
                             // Randomly decide hole size (1-4 cubes in 2x2 pattern)
                             // 40% chance = 1 cube, 30% = 2 cubes, 20% = 3 cubes, 10% = 4 cubes
                             const sizeRoll = Math.random();
@@ -746,6 +762,11 @@ export function createFallingCubeRoad(
                                     adjacent.state = "falling";
                                     adjacent.fallVelocity = 0;
                                     adjacent.fallTumble = randomTumble();
+                                    spawnDebris(
+                                        adjacent.instance.position.x,
+                                        adjacent.instance.position.y,
+                                        adjacent.instance.position.z
+                                    );
                                 }
                             }
                         }
@@ -873,6 +894,7 @@ export function createFallingCubeRoad(
             cube.fallVelocity = 0;
             cube.instance.position.y = cube.originalY;
             cube.instance.rotation.set(0, 0, 0);
+            cube.instance.scaling.setAll(1);
             cube.instance.isVisible = true;
         }
         fallenCubePositions.clear();
@@ -899,6 +921,7 @@ export function createFallingCubeRoad(
                     cube.fallVelocity = 0;
                     cube.instance.position.y = cube.originalY;
                     cube.instance.rotation.set(0, 0, 0);
+                    cube.instance.scaling.setAll(1);
                     cube.instance.isVisible = true;
                     // Remove from fallen tracking
                     fallenCubePositions.delete(getCubeKey(cube));
