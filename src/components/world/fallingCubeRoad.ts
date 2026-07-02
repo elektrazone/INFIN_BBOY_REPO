@@ -26,7 +26,7 @@ const CONFIG = {
     fallGravity: 300, // Slower, more graceful gravity
     fallMaxSpeed: 550, // Lower terminal velocity
     fallTumbleSpeed: 1.2, // Max rotation speed (rad/s) while falling, for a graceful tumble
-    fallShrinkAmount: 0.6, // Cube shrinks down to (1 - this) of its size while falling
+    fallShrinkAmount: 0.92, // Cube shrinks down to (1 - this) of its size while falling
 
     // Trigger zone (relative to player Z position)
     triggerZoneStart: -120,
@@ -192,8 +192,8 @@ export function createFallingCubeRoad(
     // ----------------------------------------------------------
     const DEBRIS_CONFIG = {
         pieceSize: CONFIG.cubeSize / 3, // Each debris piece is 1/3 the size
-        piecesPerCube: 6, // MEMORY: Reduced from 8
-        maxActiveDebris: 50, // MEMORY: Reduced from 100
+        piecesPerCube: 2, // Reduced further - the full-width V-wave triggers debris on every cube now
+        maxActiveDebris: 20, // MEMORY: Reduced from 100
         gravity: 400, // Slowed down from 1500
         maxSpeed: 600, // Slowed down from 2000
         randomVelocityRange: 30, // Reduced from 50
@@ -346,15 +346,14 @@ export function createFallingCubeRoad(
 
     // ----------------------------------------------------------
     // SHADOW CATCHER GROUND PLANE
-    // Large white plane beneath the cubes to catch shadows
+    // Large plane beneath the cubes to catch shadows and fill the background
+    // revealed through gaps/shrinking cubes. Colored to match the CSS sky
+    // (#4a90d9) so it reads as open sky instead of a mismatched white floor.
     // Follows the camera to always be visible
     // ----------------------------------------------------------
-    const shadowCatcherMaterial = new BABYLON.PBRMaterial("shadowCatcherMat", scene);
-    shadowCatcherMaterial.albedoColor = new BABYLON.Color3(1, 1, 1); // White
-    shadowCatcherMaterial.roughness = 1.0;
-    shadowCatcherMaterial.metallic = 0.0;
-    // Make it slightly transparent to blend with white background
-    shadowCatcherMaterial.alpha = 0.95;
+    const shadowCatcherMaterial = new BABYLON.StandardMaterial("shadowCatcherMat", scene);
+    shadowCatcherMaterial.emissiveColor = BABYLON.Color3.FromHexString("#4a90d9");
+    shadowCatcherMaterial.disableLighting = true;
 
     const shadowCatcherPlane = BABYLON.MeshBuilder.CreateGround(
         "shadowCatcher",
@@ -365,6 +364,7 @@ export function createFallingCubeRoad(
     shadowCatcherPlane.position.y = -CONFIG.cubeSize - 50; // Below falling cubes
     shadowCatcherPlane.receiveShadows = true;
     shadowCatcherPlane.isPickable = false;
+
 
     // Update shadow catcher position to follow camera in render loop
     const shadowCatcherObserver = scene.onBeforeRenderObservable.add(() => {
@@ -556,7 +556,7 @@ export function createFallingCubeRoad(
     // ----------------------------------------------------------
     // UPDATE LOOP
     // ----------------------------------------------------------
-    let gracePeriodTimer = 6.0; // 6 seconds of NO holes on start/reset
+    let gracePeriodTimer = 30.0; // 30 seconds of NO holes on start/reset
     
     const updateObserver = scene.onBeforeRenderObservable.add(() => {
         const gameState = useGameStore.getState().gameState;
@@ -601,15 +601,18 @@ export function createFallingCubeRoad(
             // ----------------------------------------------------------
 
             // Thresholds
-            const rearFallZ = CONFIG.cubeSize * 1; // Fall closer behind player per user request (was 2)
-            // Limit to ~3 rows falling behind the player before recycling
-            const recycleZ = CONFIG.cubeSize * 5;
+            const rearFallZ = CONFIG.cubeSize * 0.25; // Crumble starts right under player
+            const recycleZ = CONFIG.cubeSize * 3; // Cubes disappear quickly
 
             // A) Trigger Fall Behind Player - AGGRESSIVE FALLING
-            // All cubes fall quickly once behind, minimal delay
+            // Outer lanes (far left/right) fall first, center lanes hold on longest.
+            // Uses a quadratic curve (not linear) so most of the width falls almost
+            // immediately and only the center spikes up sharply, forming a sharp V
+            // instead of a straight diagonal gradient across X.
             const centerX = 4.5; // Center lane index (0-9 for width 10)
             const distFromCenter = Math.abs(cube.gridX - centerX);
-            const triangleDelay = distFromCenter * 2; // Much smaller delay (was 8)
+            const centerCloseness = 1 - distFromCenter / centerX; // 0 at edges, 1 at center
+            const triangleDelay = centerCloseness * centerCloseness * 10; // Tighter V-wave
             const triggerZ = rearFallZ + triangleDelay; // Removed random offset for consistent falling
 
             // [DEBUG] FALLING ENABLED
@@ -666,7 +669,7 @@ export function createFallingCubeRoad(
                 // Shrink as it falls so the hole's depth (dirt walls, road extension
                 // below) reads through sooner instead of staying fully occluded.
                 const fallDepth = cube.originalY - cube.instance.position.y;
-                const shrinkProgress = Math.min(1, fallDepth / (CONFIG.cubeSize * 3));
+                const shrinkProgress = Math.min(1, fallDepth / (CONFIG.cubeSize * 3.5));
                 const scale = 1 - shrinkProgress * CONFIG.fallShrinkAmount;
                 cube.instance.scaling.setAll(scale);
 
@@ -898,7 +901,7 @@ export function createFallingCubeRoad(
             cube.instance.isVisible = true;
         }
         fallenCubePositions.clear();
-        gracePeriodTimer = 6.0; // Restores grace period on restart
+        gracePeriodTimer = 30.0; // Restores grace period on restart
         console.log("🔄 Falling cube road reset");
     }
 

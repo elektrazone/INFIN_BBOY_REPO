@@ -244,6 +244,8 @@ export function createCoinSystem(
         if (scrollSpeed === 0) return;
 
         const movement = scrollSpeed * dt;
+        const FALL_GRAVITY = 350;
+        const FALL_TRIGGER_Z = 10;
 
         for (let i = activeCoins.length - 1; i >= 0; i--) {
             const coin = activeCoins[i];
@@ -251,11 +253,21 @@ export function createCoinSystem(
             // Move
             coin.mesh.position.z += movement * coin.speedMultiplier;
 
-            // Rotate
-            coin.mesh.rotation.y += coin.rotationSpeed * dt;
+            // Fall when behind player
+            if (coin.mesh.position.z > FALL_TRIGGER_Z) {
+                if ((coin as any).fallVelocity === undefined) {
+                    (coin as any).fallVelocity = 0;
+                }
+                (coin as any).fallVelocity += FALL_GRAVITY * dt;
+                coin.mesh.position.y -= (coin as any).fallVelocity * dt;
+            } else {
+                // Rotate only while in play
+                coin.mesh.rotation.y += coin.rotationSpeed * dt;
+            }
 
             // Despawn
-            if (coin.mesh.position.z > despawnZ) {
+            if (coin.mesh.position.z > despawnZ || coin.mesh.position.y < -200) {
+                (coin as any).fallVelocity = undefined;
                 coin.active = false;
                 coin.mesh.setEnabled(false);
                 activeCoins.splice(i, 1);

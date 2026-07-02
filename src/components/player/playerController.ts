@@ -129,6 +129,7 @@ export function setupPlayerController(
   const INVULNERABILITY_AFTER_HIT = 4.0;
   let invulnerabilityTimer = 0;
   let isFallingInGap = false; // Flag for physical falling
+  let deathFallInitialized = false; // Ensures death fall starts exactly once per gameover
 
   // ------------------------------------------
   // BOUNCE-BACK EFFECT (on collision)
@@ -515,7 +516,10 @@ export function setupPlayerController(
     // NORMAL LIFE LOSS
     console.log("💔 Player lost a life");
     invulnerabilityTimer = INVULNERABILITY_AFTER_HIT;
-    
+    jumpMotion.active = false;
+    jumpMotion.velocity = -30; // Initial downward push
+    isFallingInGap = true;     // Let gravity pull them below the road during Fall animation
+
     stateMachine.setPlayerState("Fall", true);
 
     // Cancel camera zoom if active
@@ -877,15 +881,13 @@ export function setupPlayerController(
     if (store.gameState === "gameover") {
       const dt = scene.getEngine().getDeltaTime() / 1000;
 
-      // Ensure player is in Death state
-      if (stateMachine.currentState !== "Death") {
-        console.log("🎮 Game Over detected - setting player to Death state");
+      // Initialize death fall exactly once per gameover, regardless of prior state
+      if (!deathFallInitialized) {
+        deathFallInitialized = true;
         bounceBackActive = false;
         bounceBackTimer = 0;
         setScrollSpeed(0);
         stateMachine.setPlayerState("Death", true);
-
-        // Start falling physics
         jumpMotion.active = false;
         jumpMotion.velocity = -50;
         isFallingInGap = true;
@@ -1085,6 +1087,7 @@ export function setupPlayerController(
     gameStarted = true;
     introPlaying = false;
     isFallingInGap = false; // Safety reset on start/restart
+    deathFallInitialized = false;
     jumpMotion.active = false;
     jumpMotion.velocity = 0;
 
@@ -1333,6 +1336,7 @@ export function setupPlayerController(
     requestedStart = false;
     isOnPlatform = false;
     isFallingInGap = false; // logic reset
+    deathFallInitialized = false;
     jumpMotion.active = false;
     jumpMotion.velocity = 0;
     bounceBackActive = false;

@@ -15,6 +15,8 @@ export function createClouds(
 
     const CLOUD_Y_MIN = 180;
     const CLOUD_Y_MAX = 260;
+    const CLOUD_Y_HIGH_MIN = 350;  // elevated tier for some clouds
+    const CLOUD_Y_HIGH_MAX = 450;
     const CLOUD_X_RANGE = 320;        // spread left/right across the sky
     const CLOUD_SPACING = 550;        // average distance between clouds along Z (sparser, more open sky)
     const CLOUD_NEAR_Z = -450;        // keep clouds well back so one doesn't loom huge up close
@@ -22,8 +24,8 @@ export function createClouds(
     const CLOUD_SCALE_MIN = 46;  // scaled down another 15% from the 54-99 range
     const CLOUD_SCALE_MAX = 84;
     const DESPAWN_Z = 100;
-    const PARALLAX = 0.18; // clouds drift far slower than the road/buildings
-    const WIND_X_SPEED = 12; // slow right-to-left wind drift (units/sec), independent of gameplay scroll
+    const PARALLAX = 0.14; // clouds drift far slower than the road/buildings
+    const WIND_X_SPEED = 7; // slow left-to-right wind drift (units/sec), independent of gameplay scroll
     const WIND_WRAP_X = CLOUD_X_RANGE * 1.5; // wrap distance, kept off-screen
 
     const cloudMaterial = getCloudMaterial(scene);
@@ -77,7 +79,10 @@ export function createClouds(
         // count can't randomly land clustered on the same side of the sky.
         const side = cloudRoots.length % 2 === 0 ? 1 : -1;
         const x = side * (CLOUD_X_RANGE * 0.35 + Math.random() * CLOUD_X_RANGE * 0.65);
-        const y = CLOUD_Y_MIN + Math.random() * (CLOUD_Y_MAX - CLOUD_Y_MIN);
+        const isHighCloud = cloudRoots.length % 3 === 2;
+        const y = isHighCloud
+            ? CLOUD_Y_HIGH_MIN + Math.random() * (CLOUD_Y_HIGH_MAX - CLOUD_Y_HIGH_MIN)
+            : CLOUD_Y_MIN + Math.random() * (CLOUD_Y_MAX - CLOUD_Y_MIN);
         cloudRoot.position.set(x, y, z);
         cloudRoot.rotation.y = Math.random() * Math.PI * 2;
 

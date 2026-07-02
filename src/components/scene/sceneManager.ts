@@ -44,7 +44,7 @@ export function createScene(canvas: HTMLCanvasElement) {
     // ==========================================================================
     scene.imageProcessingConfiguration.isEnabled = true; // Re-enabled for vibrancy
     scene.imageProcessingConfiguration.contrast = 1.3;      // Boost contrast
-    scene.imageProcessingConfiguration.exposure = 1.1;      // Slightly brighter
+    scene.imageProcessingConfiguration.exposure = 0.99;     // -10% brightness
 
     // Color curves for saturation boost
     const colorCurves = new BABYLON.ColorCurves();

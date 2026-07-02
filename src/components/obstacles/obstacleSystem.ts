@@ -54,6 +54,8 @@ export interface ObstacleInstance {
   isHamburgerVariant?: boolean;
   active: boolean;
   speedMultiplier?: number;
+  fallVelocity?: number;
+  tumble?: BABYLON.Vector3;
 }
 
 // ... [BUILDER FUNCTIONS RIMANGONO INVARIATE: buildJumpObstacle, buildDuckObstacle, etc.] ...
@@ -151,6 +153,10 @@ export function createObstacleSystem(
     if (pooled) {
       pooled.active = true;
       pooled.mesh.setEnabled(true);
+      pooled.fallVelocity = undefined;
+      pooled.tumble = undefined;
+      pooled.mesh.rotation.set(0, 0, 0);
+      pooled.mesh.position.y = pooled.mesh.metadata?.originalY ?? 0;
 
       // Randomize speed for platforms when re-acquired
       if (type === "platform") {
@@ -169,6 +175,10 @@ export function createObstacleSystem(
       if (recycled) {
         recycled.active = true;
         recycled.mesh.setEnabled(true);
+        recycled.fallVelocity = undefined;
+        recycled.tumble = undefined;
+        recycled.mesh.rotation.set(0, 0, 0);
+        recycled.mesh.position.y = recycled.mesh.metadata?.originalY ?? 0;
         recycled.speedMultiplier = type === "platform" ? (1.2 + Math.random() * 1.0) : 1.0;
         return recycled;
       }
@@ -206,7 +216,7 @@ export function createObstacleSystem(
 
     mesh.parent = root;
     mesh.receiveShadows = true;
-    mesh.metadata = { obstacleType: type, variant: variantUsed, isHamburgerVariant };
+    mesh.metadata = { obstacleType: type, variant: variantUsed, isHamburgerVariant, originalY: mesh.position.y };
     shadowGenerator.addShadowCaster(mesh, true);
 
     // Allow bounding boxes to sync normally as objects move towards the player
@@ -448,9 +458,10 @@ export function createObstacleSystem(
     if (speed === 0) return;
 
     const movement = speed * dt;
+    const FALL_GRAVITY = 350;
+    const FALL_TRIGGER_Z = 10; // units behind player before obstacles fall
 
     for (const obs of activeObstacles) {
-      // Each platform has its own speedMultiplier
       const multiplier = obs.speedMultiplier || 1.0;
       obs.mesh.position.z += movement * multiplier;
 
@@ -460,12 +471,32 @@ export function createObstacleSystem(
           obs.mesh.rotate(BABYLON.Axis.Y, dt * 1.5, BABYLON.Space.LOCAL);
         }
       }
+
+      // Duck obstacles get extra clearance so the ring doesn't drop until the player is fully through
+      const fallTrigger = obs.type === "duck" ? 40 : FALL_TRIGGER_Z;
+      if (obs.mesh.position.z > fallTrigger) {
+        if (obs.fallVelocity === undefined) {
+          obs.fallVelocity = 0;
+          obs.tumble = new BABYLON.Vector3(
+            (Math.random() - 0.5) * 2,
+            (Math.random() - 0.5) * 2,
+            (Math.random() - 0.5) * 2
+          );
+        }
+        obs.fallVelocity += FALL_GRAVITY * dt;
+        obs.mesh.position.y -= obs.fallVelocity * dt;
+        obs.mesh.rotation.x += (obs.tumble?.x ?? 0) * dt;
+        obs.mesh.rotation.y += (obs.tumble?.y ?? 0) * dt;
+        obs.mesh.rotation.z += (obs.tumble?.z ?? 0) * dt;
+      }
     }
 
     for (let i = activeObstacles.length - 1; i >= 0; i--) {
       const obs = activeObstacles[i];
-      if (obs.mesh.position.z > despawnZ) {
+      if (obs.mesh.position.z > despawnZ || obs.mesh.position.y < -200) {
         obs.active = false;
+        obs.fallVelocity = undefined;
+        obs.tumble = undefined;
         obs.mesh.setEnabled(false);
         activeObstacles.splice(i, 1);
       }
